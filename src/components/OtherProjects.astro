@@ -349,6 +349,11 @@ const { projects } = architect;
     pointer-events: none;
   }
 
+  /* A step in focus brings the next plan's label in with its sheet, not after the row's first drafting. */
+  :global(.js-experience) .projects[data-mode='focus'] .projects-item:has([aria-current]) {
+    transition: opacity 0.9s var(--ease-settle) 0.3s;
+  }
+
   /* Back from a plan the row is already drafted, so the labels return with their sheets instead of after the ink. */
   :global(.js-experience) .projects[data-mode='list'][data-seen] .projects-item {
     transition:

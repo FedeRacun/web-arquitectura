@@ -4,7 +4,7 @@ import { Vector3 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { createCameraRig, lens, poseCamera, type CameraView } from './camera';
 import { createGuide } from './guide';
-import { blendView, navigate, projectsView, rowLayout, safeArea, standing, type ProjectsNav } from './projects';
+import { blendView, navigate, present, projectsView, rowLayout, safeArea, standing, type ProjectsNav } from './projects';
 import { createState } from './state';
 
 const SIZES = [
@@ -144,6 +144,15 @@ describe('standing', () => {
     expect(standing({ mode: 'focus', index: 1 }, 0)).toBe(false);
     expect(standing({ mode: 'list', index: 1 }, 1)).toBe(false);
     expect(standing({ mode: 'closed', index: 1 }, 1)).toBe(false);
+  });
+});
+
+describe('present', () => {
+  it('keeps every plan in the list, and only the one in focus while one is', () => {
+    for (const index of [0, 1, 2]) expect(present({ mode: 'list', index: 1 }, index)).toBe(true);
+    expect(present({ mode: 'focus', index: 1 }, 1)).toBe(true);
+    expect(present({ mode: 'focus', index: 1 }, 0)).toBe(false);
+    expect(present({ mode: 'focus', index: 1 }, 2)).toBe(false);
   });
 });
 

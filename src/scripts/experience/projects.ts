@@ -216,6 +216,9 @@ export function projectsView(row: readonly PlacedSheet[], nav: ProjectsNav, aspe
 /** Only the house whose plan is in focus stands on it. */
 export const standing = (nav: ProjectsNav, index: number) => nav.mode === 'focus' && nav.index === index;
 
+/** While one plan is in focus the others fade from the table, and are not there to pick. */
+export const present = (nav: ProjectsNav, index: number) => nav.mode !== 'focus' || nav.index === index;
+
 // ---------------------------------------------------------------------------
 // The view itself: the sheets in the scene, the camera's moves and the HTML around them.
 
@@ -420,7 +423,7 @@ export function createProjects(options: ProjectsOptions) {
   const arrange = () => {
     goals.forEach((goal, index) => {
       const rise = standing(current, index) ? 1 : 0;
-      const presence = current.mode === 'focus' && index !== current.index ? 0 : 1;
+      const presence = present(current, index) ? 1 : 0;
       if (rise !== goal.rise) {
         goal.rise = rise;
         if (rise) model(index);
@@ -474,21 +477,23 @@ export function createProjects(options: ProjectsOptions) {
 
   function close() {
     current = navigate(current, { type: 'close' }, total);
-    arrange();
     hover(-1);
     seal(false);
     show();
     opener.focus({ preventScroll: true });
     // The scroll walks again from where it was once the camera is back over the model; a gesture made
-    // on the way back is kept and walked then. Under reduced motion it is free again at the cut.
+    // on the way back is kept and walked then. Under reduced motion it is free again at the cut, and the
+    // model sinks and the plans return there too, behind the veil.
     const done = () => current.mode === 'closed' && options.scroll.start();
     aside?.kill();
     if (reducedMotion) {
       crossfade(() => {
+        arrange();
         state.aside = 0;
         done();
       });
     } else {
+      arrange();
       options.scroll.hold();
       aside = gsap.to(state, { aside: 0, duration: 2.2, ease: SETTLE, onUpdate: requestRender, onComplete: done });
     }
@@ -558,7 +563,7 @@ export function createProjects(options: ProjectsOptions) {
     let nearest = Infinity;
     let found = -1;
     boxes.forEach((box, index) => {
-      if (!ray.intersectBox(box, hit)) return;
+      if (!present(current, index) || !ray.intersectBox(box, hit)) return;
       const distance = hit.distanceTo(ray.origin);
       if (distance < nearest) {
         nearest = distance;
