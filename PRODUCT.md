@@ -36,7 +36,7 @@ None. No photographs, projects, testimonials or client names exist and none may 
 ## Product Principles
 
 - 3D only where it tells the business story: design, then build.
-- One sentence per scene at most; the work speaks.
+- One headline per scene; the work speaks. The copy follows the architect's real work process (terreno, anteproyecto, proyecto, obra, entrega): each scene names its stage and says, in one plain line, what the studio does in it. Voseo to the client, "nosotros" for the studio; no aphorisms and no claims the architect would have to prove.
 - Performance is a design rule: the mobile degraded version is budgeted from day one.
 - Everything moves slow and heavy, like a building; nothing bounces.
 

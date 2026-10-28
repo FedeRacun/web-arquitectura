@@ -158,7 +158,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Scene Sentence",
-        "purpose": "The one sentence per scene; balanced, max 13ch."
+        "purpose": "The one headline per scene; balanced, max 16ch. A plain note and the stage name go under it."
       },
       "headline": {
         "displayName": "Layer Word",
@@ -226,7 +226,7 @@
       "kind": "button",
       "refersTo": "button-primary",
       "description": "The page's single action, in the closing scene.",
-      "html": "<a class=\"ds-cta\" href=\"#\">Escribir por WhatsApp</a>",
+      "html": "<a class=\"ds-cta\" href=\"#\">Escribinos por WhatsApp</a>",
       "css": ".ds-cta{display:inline-flex;align-items:center;gap:.75rem;padding:1.15rem 2rem 1.2rem;background:var(--color-accent,#b8743a);color:var(--color-base,#141210);font-family:'DM Sans',sans-serif;font-weight:500;font-size:1.125rem;letter-spacing:.005em;text-decoration:none;border-radius:0;transition:background-color .6s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1)),color .6s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1));} .ds-cta:hover{background:var(--color-bone,#ede6da);} .ds-cta:focus-visible{outline:1px solid var(--color-bone,#ede6da);outline-offset:6px;} .ds-cta:active{translate:0 1px;}"
     },
     {
@@ -234,15 +234,15 @@
       "kind": "custom",
       "refersTo": "scene-sentence",
       "description": "One sentence per scene, at most one copper word.",
-      "html": "<p class=\"ds-phrase\">Diseñar es imaginar el <em>peso</em>.</p>",
-      "css": ".ds-phrase{font-family:'DM Serif Display',serif;font-weight:400;font-size:clamp(2.1rem,.95rem + 3.5vw,5rem);line-height:1.04;letter-spacing:-.02em;text-wrap:balance;max-width:13ch;color:var(--color-bone,#ede6da);background:var(--color-base,#141210);margin:0;padding:1.5rem;} .ds-phrase em{font-style:normal;color:var(--color-accent,#b8743a);}"
+      "html": "<p class=\"ds-phrase\">Del hormigón al último <em>vidrio</em>.</p>",
+      "css": ".ds-phrase{font-family:'DM Serif Display',serif;font-weight:400;font-size:clamp(2.1rem,.95rem + 3.5vw,5rem);line-height:1.04;letter-spacing:-.02em;text-wrap:balance;max-width:16ch;color:var(--color-bone,#ede6da);background:var(--color-base,#141210);margin:0;padding:1.5rem;} .ds-phrase em{font-style:normal;color:var(--color-accent,#b8743a);}"
     },
     {
       "name": "Leader-line Callout",
       "kind": "custom",
       "refersTo": "layer-word",
       "description": "Exploded-view layer word hung off a hairline: the part name with its role under it, always shown dim; hover lengthens the line and lights the name copper.",
-      "html": "<div class=\"ds-callouts\"><span class=\"ds-callout\"><span class=\"ds-leader\"></span><span class=\"ds-word\">Estructura<small class=\"ds-role\">Lo que sostiene.</small></span></span><span class=\"ds-callout\"><span class=\"ds-leader\"></span><span class=\"ds-word\">Muros<small class=\"ds-role\">Lo que protege.</small></span></span></div>",
+      "html": "<div class=\"ds-callouts\"><span class=\"ds-callout\"><span class=\"ds-leader\"></span><span class=\"ds-word\">Estructura<small class=\"ds-role\">La calculamos y revisamos en obra.</small></span></span><span class=\"ds-callout\"><span class=\"ds-leader\"></span><span class=\"ds-word\">Muros<small class=\"ds-role\">Los aislamos del frío y la humedad.</small></span></span></div>",
       "css": ".ds-callouts{display:grid;gap:1rem;padding:1.5rem;background:#141210;} .ds-callout{display:flex;align-items:center;gap:.9rem;font-family:'DM Sans',sans-serif;font-weight:500;font-size:clamp(.95rem,.85rem + .35vw,1.15rem);letter-spacing:.01em;color:#ede6da;cursor:pointer;} .ds-leader{display:block;width:clamp(1.75rem,4vw,3.5rem);height:1px;background:color-mix(in oklab,#ede6da 45%,transparent);transition:width .9s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1)),background-color .9s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1));} .ds-word{opacity:.6;transition:opacity .9s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1)),translate .9s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1)),color .9s var(--ease-settle, cubic-bezier(0.22, 0.61, 0.24, 1));} .ds-callout:hover .ds-leader{width:clamp(3rem,7vw,6rem);background:var(--color-accent,#b8743a);} .ds-callout:hover .ds-word{opacity:1;translate:0 0;color:var(--color-accent,#b8743a);} .ds-word{display:grid;gap:0.2rem;} .ds-role{font-size:0.85em;font-weight:400;color:#ede6da;opacity:0.75;}"
     },
     {
@@ -272,7 +272,7 @@
     "overview": "One continuous dark frame in which a building is drawn, raised, clad, lit, taken apart and shrunk to a model, all driven by the visitor's scroll. The page has no chrome: no nav, no logo, no cards, no grid of content. Each scene carries at most one sentence, set large in a serif and given air, while the 3D scene does the rest of the talking. Interface marks borrow from the drafting table: hairline leader lines like axonometric callouts, a drifting arrow under the word \"Bajar\" for the scroll hint, a CAD crosshair for the pointer.\n\nMaterial character comes from architecture rather than from UI: board-formed concrete with formwork tie holes, warm wood, dark glass, hard raking light, and a balsa study model under one lamp. Everything is procedural; no image is downloaded. A fine concrete grain sits over the whole frame, scene included.\n\nMotion is slow and heavy: every transition decelerates like a load settling, nothing bounces, there is no sound. Stopping the scroll leaves the stroke or the extrusion halfway. Under reduced motion the finished building stands still and only the light follows the scroll.",
     "keyCharacteristics": [
       "Three interface colours (warm black, bone, copper) and two faces.",
-      "One sentence per scene, display serif, at most one copper word in it.",
+      "One headline per scene, display serif, at most one copper word in it; under it, a plain note on what the studio does in that stage and the stage name.",
       "Hairline (1px) linework for every interface mark; no boxes, no radii.",
       "Charcoal sketch strokes that overshoot corners, waver and thin at their ends.",
       "A ground floor plan drafted to convention after the sketch (poché, door swings, windows, stair, axes, dimensions, room names with areas and levels, north point, scale); the building rises from it.",
@@ -291,7 +291,7 @@
       },
       {
         "name": "The Sentence, Not a Heading Rule",
-        "body": "Display type is used for whole sentences, not for titles over content. There are no eyebrows, kickers or small caps above them.",
+        "body": "Display type is used for whole sentences, not for titles over content. There are no eyebrows, kickers or small caps above them: the stage name closes the block, under the note, lettered like the plan sheet title.",
         "section": "typography"
       },
       {
@@ -309,7 +309,7 @@
       "Do use the settle curve (`cubic-bezier(0.22, 0.61, 0.24, 1)`) for every CSS transition, with durations between 0.4s and 1.2s.",
       "Do keep scene choreography on `power1`/`power2` in-out curves with scrub smoothing; nothing overshoots.",
       "Do draw every interface mark as a 1px line in bone or copper.",
-      "Do keep one sentence per scene, display serif, with at most one copper word.",
+      "Do keep one headline per scene, display serif, with at most one copper word; the note and the stage name go under it, never above.",
       "Do generate textures procedurally (formwork panels and tie holes, wood grain, the SVG grain overlay at 9% soft-light).",
       "Do give reduced motion the finished building, with only the light following the scroll."
     ],

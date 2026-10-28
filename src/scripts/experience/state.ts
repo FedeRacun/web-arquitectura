@@ -16,8 +16,8 @@ export function createState() {
     targetY: 0,
     targetZ: 0,
     frameX: 0,
-    /** Scene 1 lifts the plot clear of the sentence below it; the preloader's point sits at the same height. */
-    frameY: -0.08,
+    /** Scene 1 lifts the plot clear of the sentence block below it; the preloader's point sits at the same height. */
+    frameY: -0.18,
     /** How much of the portrait pull-back applies: tall subjects (the exploded stack) need less of it. */
     portraitPull: 1,
 

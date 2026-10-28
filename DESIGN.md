@@ -34,10 +34,21 @@ typography:
     fontSize: "1.125rem"
     fontWeight: 500
     letterSpacing: "0.005em"
+  note:
+    fontFamily: "DM Sans, sans-serif"
+    fontSize: "clamp(1rem, 0.9rem + 0.3vw, 1.2rem)"
+    fontWeight: 400
+    lineHeight: 1.45
+  stage:
+    fontFamily: "DM Sans, sans-serif"
+    fontSize: "0.75rem"
+    fontWeight: 500
+    letterSpacing: "0.16em"
 rounded:
   none: "0px"
 spacing:
   gutter: "clamp(1.25rem, 6vw, 6rem)"
+  sentence-top: "6svh"
   sentence-low: "12svh"
   sentence-high: "14svh"
   leader-gap: "0.9rem"
@@ -75,7 +86,7 @@ Motion is slow and heavy: every transition decelerates like a load settling, not
 
 **Key Characteristics:**
 - Three interface colours (warm black, bone, copper) and two faces.
-- One sentence per scene, display serif, at most one copper word in it.
+- One headline per scene, display serif, at most one copper word in it; under it, a plain note on what the studio does in that stage and the stage's name.
 - Hairline (1px) linework for every interface mark; no boxes, no radii.
 - Charcoal sketch strokes that overshoot corners, waver and thin at their ends.
 - A single heavy easing curve for every CSS transition.
@@ -113,19 +124,21 @@ These never appear as interface fills; they live inside the shader.
 **Character:** A high-contrast editorial serif speaks the sentences; a quiet grotesk handles the few functional labels. DM Serif Display and DM Sans are free stand-ins for the licensed PP Editorial New and Neue Haas Grotesk; the swap point is the two `fonts` entries in `astro.config.mjs` (keep the `--font-dm-serif-display` and `--font-dm-sans` variables and nothing else changes).
 
 ### Hierarchy
-- **Display** (400, clamp(2.1rem, 0.95rem + 3.5vw, 5rem), 1.04): the one sentence per scene. Balanced wrap, max 13ch; a two-clause sentence sets each clause on its own line and drops the measure.
+- **Display** (400, clamp(2.1rem, 0.95rem + 3.5vw, 5rem), 1.04): the one sentence per scene. Balanced wrap, max 16ch (12ch beside the exploded roof, none across the top of the drawn plan); a two-clause sentence sets each clause on its own line and drops the measure.
+- **Note** (DM Sans 400, clamp(1rem, 0.9rem + 0.3vw, 1.2rem), 1.45, bone at 82%): one plain sentence under the headline on what the studio does in that stage. Max 36ch (64ch across the top of the plan), 1.1rem below the headline, on the headline's axis.
+- **Stage** (DM Sans 500, 0.75rem, 0.16em, uppercase, tabular numerals, bone at 55%): the stage's name ("01 · Terreno" to "05 · Entrega", "Por dentro"), 1.4rem under the note.
 - **Headline** (400, clamp(2rem, 1.2rem + 3vw, 3.75rem), 1.05): the exploded-view layer words ("Estructura", "Muros", "Aberturas", "Cubierta") when they read as a column, and on narrow screens as the caption under the stack (fixed 2.25rem).
 - **Label** (DM Sans 500, clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem), 0.01em): the layer words hung off their leader lines on wide screens.
-- **Button** (DM Sans 500, 1.125rem, 0.005em): "Escribir por WhatsApp".
+- **Button** (DM Sans 500, 1.125rem, 0.005em): "Escribinos por WhatsApp".
 
 ### Named Rules
-**The Sentence, Not a Heading Rule.** Display type is used for whole sentences, not for titles over content. There are no eyebrows, kickers or small caps above them.
+**The Sentence, Not a Heading Rule.** Display type is used for whole sentences, not for titles over content. There are no eyebrows, kickers or small caps above them: the stage's name closes the block, under the note, lettered like the plan sheet's title.
 
 **The Upright Emphasis Rule.** `em` is never italic; emphasis is colour (copper) alone.
 
 ## Layout
 
-There is no grid or container. Each storyboard scene is a section as tall as its share of the scroll (`--screens × 100lvh`); with the experience running, its content is pinned to the viewport and faded by the master timeline. Sentences sit at one of five placements over the scene: centre-low (11svh from the bottom), left-low or right-high / left-high (side inset by the gutter, 12svh from the bottom or 14svh from the top), or centre (the closing, sentence at 14svh and button at 12svh from the bottom). Placement alternates against the building's framing so text never sits on the volume.
+There is no grid or container. Each storyboard scene is a section as tall as its share of the scroll (`--screens × 100lvh`); with the experience running, its content is pinned to the viewport and faded by the master timeline. Sentences sit at one of six placements over the scene: centre-low (11svh from the bottom, inset by 1.25rem each side), left-low or right-high / left-high (side inset by the gutter, 12svh from the bottom or 14svh from the top), left-top (a band across the top at 6svh, over the drawn plan, which the camera frames lower and a little further back), or centre (the closing: the question at 14svh, the note and the button together at 12svh from the bottom). Placement alternates against the building's framing so text never sits on the volume; where a scene's text block is taller, the camera's framing shift (`frameX`, `frameY`) moves the subject clear of it.
 
 Without WebGL the sections read as a plain sequence of centred sentences (min-height 100svh, 6rem × 1.5rem padding). Under reduced motion each sentence rides its own section, sticky and left-aligned at the gutter, 12svh above the bottom.
 
@@ -157,7 +170,7 @@ The one action on the page, held back until the last scene.
 - Opens WhatsApp in a new tab and says so to screen readers ("(se abre en una pestaña nueva)").
 
 ### Leader-line Callout (signature)
-The exploded axonometric's four layer words, each a part's name with what it does for the house under it in DM Sans ("Estructura / Lo que sostiene.", "Muros / Lo que protege.", "Aberturas / Lo que deja entrar la luz.", "Cubierta / Lo que cobija."). The role stays bone at 75% of the word's opacity, also when the name turns copper. Each hangs off its layer, its leader on the name's line, on a 1px bone line at 45% strength (clamp(1.75rem, 4vw, 3.5rem) long, 0.9rem gap). The words always read at 60% opacity, so nobody has to find the hover to learn the layers. Hover or tap lengthens the line to clamp(3rem, 7vw, 6rem), turns it copper and lights the word to full copper, all over 0.9s on the settle curve. On narrow screens only one word fits: the line becomes a vertical plumb line that scales down from the layer to a display-serif caption, hidden until active, and the scene lights the four in turn, 1.2s apart, once the layers have come apart.
+The exploded axonometric's four layer words, each a part's name with what the studio does with it under it in DM Sans ("Estructura / La calculamos y revisamos en obra.", "Muros / Los aislamos del frío y la humedad.", "Aberturas / Las ubicamos según el sol y la vista.", "Cubierta / La impermeabilizamos y probamos con agua."). The longest role, 41 characters, still fits one line on a 375px screen. The role stays bone at 75% of the word's opacity, also when the name turns copper. Each hangs off its layer, its leader on the name's line, on a 1px bone line at 45% strength (clamp(1.75rem, 4vw, 3.5rem) long, 0.9rem gap). The words always read at 60% opacity, so nobody has to find the hover to learn the layers. Hover or tap lengthens the line to clamp(3rem, 7vw, 6rem), turns it copper and lights the word to full copper, all over 0.9s on the settle curve. On narrow screens only one word fits: the line becomes a vertical plumb line that scales down from the layer to a display-serif caption, hidden until active, and the scene lights the four in turn, 1.2s apart, once the layers have come apart.
 
 ### Drafted Plan (scene 2)
 The ground floor plan, drafted on the plot at full size after the sketch, the way a house is set out before it is built, and the plan the building then rises from. One ink, bone, on the warm-black board; the camera looks down on it nearly plumb, south at the top and the garden below, turned a few degrees so it reads as a sheet on a table, not a screen. It is drawn as an architect's plan at about 1:100: walls cut at 1.20 m, concrete in solid poché and brick partitions hatched at 45°; what is seen below the cut in finer lines; the upper floor and the canopy over the front door dashed in projection; the blade wall in poché, running 1,50 past each end of the house, with its own string on the west and the note "MURO H° VISTO e 0,30 · h +7,15"; doors as a leaf and a quarter arc; windows with sill lines, glass and mullions, high windows dashed; the stair with treads, break line, walking line, "SUBE" and its riser note; dash-dot axes ending in numbered and lettered bubbles; dimension strings with 45° ticks, axis to axis and overall, figures with a decimal comma and turned to read upwards on the north-south strings; room names in spaced DM Sans capitals, abbreviated where the room is narrower than its name or the name would run into a fitting, with the area ("39,05 m²"), and the level ("NPT ±0,00") once per floor and where the floor changes level; a north point, and the title "PLANTA BAJA" with a graphic scale beside it. Four line weights, 0.35, 0.22, 0.14 and 0.09 mm at 1:100. The drafting order is a drafter's: walls first, then lines, then lettering, each sweeping west to east. The guided scroll rests on the finished plan. During the extrusion it stays under the walls at 60%, and it fades out with the sketch as the materials arrive.
@@ -177,7 +190,7 @@ A full warm-black cover with a breathing 5px point of light (2.8s, alternate) pl
 - **Do** use the settle curve (`cubic-bezier(0.22, 0.61, 0.24, 1)`) for every CSS transition, with durations between 0.4s and 1.2s.
 - **Do** keep scene choreography on `power1`/`power2` in-out curves with scrub smoothing; nothing overshoots.
 - **Do** draw every interface mark as a 1px line in bone or copper.
-- **Do** keep one sentence per scene, display serif, with at most one copper word.
+- **Do** keep one headline per scene, display serif, with at most one copper word; the note and the stage's name go under it, never above.
 - **Do** generate textures procedurally (formwork panels and tie holes, wood grain, the SVG grain overlay at 9% soft-light).
 - **Do** give reduced motion the finished building, with only the light following the scroll.
 

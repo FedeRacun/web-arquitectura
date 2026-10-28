@@ -10,7 +10,7 @@ import { SCENES, type SceneId } from '../scripts/experience/scenes';
 interface Props {
   id: SceneId;
   /** Where the sentence sits over the scene. */
-  placement?: 'center-low' | 'left-low' | 'right-high' | 'left-high' | 'center';
+  placement?: 'center-low' | 'left-low' | 'right-high' | 'left-high' | 'left-top' | 'center';
   label?: string;
   /** The page's first sentence: painted with the first frame, under the preloader, until the intro reveals it. */
   opening?: boolean;
@@ -85,10 +85,10 @@ const empty = !Astro.slots.has('default');
     opacity: 1;
   }
 
+  /* Both insets, not left 50% and a translate: that would leave the block only half the width to wrap in. */
   :global(.js-experience) [data-placement='center-low'] {
-    left: 50%;
+    inset-inline: 1.25rem;
     bottom: 11svh;
-    translate: -50% 0;
     text-align: center;
   }
 
@@ -100,6 +100,12 @@ const empty = !Astro.slots.has('default');
   :global(.js-experience) [data-placement='left-high'] {
     left: clamp(1.25rem, 6vw, 6rem);
     top: 14svh;
+  }
+
+  /* A band across the top, for a scene whose subject fills the frame below it (the drawn plan). */
+  :global(.js-experience) [data-placement='left-top'] {
+    inset-inline: clamp(1.25rem, 6vw, 6rem);
+    top: 6svh;
   }
 
   :global(.js-experience) [data-placement='right-high'] {

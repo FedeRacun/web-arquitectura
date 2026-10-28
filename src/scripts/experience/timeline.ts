@@ -23,8 +23,11 @@ export interface TimelineOptions {
   onUpdate(progress: number): void;
 }
 
-/** Over the plot, nearly plumb, to read the plan as drawn: south at the top, the garden below. */
-const PLAN_VIEW = { azimuth: 0.1, elevation: 1.2, distance: 40, targetX: 0, targetY: 0, targetZ: 1.2, frameX: 0, frameY: 0 };
+/**
+ * Over the plot, nearly plumb, to read the plan as drawn: south at the top, the garden below.
+ * Set a little back and low in the frame, so the sentence reads across the top of the sheet.
+ */
+const PLAN_VIEW = { azimuth: 0.1, elevation: 1.2, distance: 45, targetX: 0, targetY: 0, targetZ: 1.2, frameX: 0, frameY: 0.12 };
 
 const at = (id: SceneId, fraction = 0) => {
   const span = sceneSpans().find((candidate) => candidate.id === id)!;
@@ -98,14 +101,17 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   put('lineas', 0.42, 0.86, { ...PLAN_VIEW, ease: 'power2.inOut' });
   put('lineas', 0.45, 0.75, { sketchOpacity: 0.12 });
   put('lineas', 0.5, 0.9, { plan: 1 });
+  // The sentence names the stage while the plan is drafted and stays for the rest on the finished sheet.
+  sentence(tl, c.lineas, at('lineas', 0.62), at('lineas', 0.97));
 
   // 3 · La extrusión. The walls rise from their plan into frosted volume; the camera comes down and orbits very slowly.
   put('extrusion', 0, 0.72, { grow: height, ease: 'power1.inOut' });
   put('extrusion', 0.3, 1, { sketchOpacity: 0.28, siteOpacity: 0.4 });
   // The plan stays under the house it became, quieter, so the lettering does not read through the walls.
   put('extrusion', 0.25, 0.7, { planOpacity: 0.6 });
-  put('extrusion', 0, 1, { azimuth: 1.02, elevation: 0.3, distance: 40, targetY: 3, targetZ: 0, ease: 'power1.inOut' });
-  put('extrusion', 0, 0.45, { frameX: 0.13, ground: 1, ease: 'power1.inOut' });
+  put('extrusion', 0, 1, { azimuth: 1.02, elevation: 0.3, distance: 46, targetY: 3, targetZ: 0, ease: 'power1.inOut' });
+  // Up and to the right, so the board's near corner clears the sentence block at the lower left.
+  put('extrusion', 0, 0.45, { frameX: 0.2, frameY: -0.06, ground: 1, ease: 'power1.inOut' });
   sentence(tl, c.extrusion, at('extrusion', 0.22), at('extrusion', 0.8));
 
   // 4 · La materia. Three waves sweep up the volume: concrete, then wood, then glass,
@@ -115,16 +121,18 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   // The sun swings round to graze the facade, ready to sweep across it in scene 5.
   put('materia', 0, 1, { sunAzimuth: 1.3, sunElevation: 0.3 });
   put('materia', 0, 1, { azimuth: 0.74, elevation: 0.22, distance: 40, targetY: 4 });
-  put('materia', 0, 0.35, { frameX: -0.13, ease: 'power1.inOut' });
+  put('materia', 0, 0.35, { frameX: -0.13, frameY: 0.05, ease: 'power1.inOut' });
   sentence(tl, c.materia, at('materia', 0.16), at('materia', 0.82));
 
   // 5 · La luz. The scroll moves the sun; the pointer leans it; the interior lights up.
   // Hard light: almost no fill, so the blade wall and the overhang throw deep shadows across the front.
   put('luz', 0, 0.3, { sunIntensity: 3.1, fill: 0.05, tilt: 1, ease: 'power1.inOut' });
   put('luz', 0, 1, { sunAzimuth: -1.15, sunElevation: 0.3 });
-  put('luz', 0, 0.45, { azimuth: 0.3, elevation: 0.15, distance: 40, targetY: 3.4, frameX: 0, ease: 'power1.inOut' });
+  // The house sits lower and a little right, leaving the sky above the blade wall to the sentence.
+  put('luz', 0, 0.45, { azimuth: 0.3, elevation: 0.15, distance: 40, targetY: 3.4, frameX: 0.06, frameY: 0.1, ease: 'power1.inOut' });
   put('luz', 0.4, 0.92, { interior: 1 });
   put('luz', 0.88, 1, { tilt: 0 });
+  sentence(tl, c.luz, at('luz', 0.3), at('luz', 0.8));
 
   // 6 · El despiece. The layers separate into a live exploded axonometric.
   put('despiece', 0.03, 0.6, { explode: 1, ease: 'power2.inOut' });
@@ -133,7 +141,9 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
     elevation: 0.5,
     distance: 82,
     targetY: 14.5,
-    frameX: -0.1,
+    // Right enough that the roof clears the sentence; the layer words still fit beside the stack.
+    frameX: -0.03,
+    frameY: 0,
     portraitPull: 0.55,
     sunIntensity: 2.6,
     sunAzimuth: -0.7,
@@ -164,9 +174,11 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   put('cierre', 0, 0.62, {
     azimuth: 0,
     elevation: 1.28,
-    distance: 64,
+    // Far enough that the plot sits clear of the question above it and the note and button below.
+    distance: 84,
     targetY: 0,
     frameX: 0,
+    frameY: -0.03,
     portraitPull: 1,
     siteOpacity: 1,
     sunAzimuth: 0.6,
