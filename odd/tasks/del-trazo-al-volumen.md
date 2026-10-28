@@ -29,11 +29,11 @@ Branch: `feat/del-trazo-al-volumen` · Delivery: local work-unit commits only (n
 
 | ID | Specs | Route | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| T1 Scaffold, tokens, HTML scenes, preloader, CAD cursor, CTA | S2, S3–S10 text, S11 cursor, S12–S14, S16 a11y, S17–S19 | inline | pending | — |
-| T2 3D core: deferred boot, renderer, Lenis+ScrollTrigger master timeline, camera rig, grain, scene 1 | S1, S3, S14, S15 | inline | pending | — |
-| T3 Scenes 2–4: sketch wireframe, frosted extrusion, material wave shader | S4–S6, S15 | inline | pending | — |
-| T4 Scenes 5–6: sun and interior light, cursor light tilt, exploded layers with words | S7, S8, S11 | inline | pending | — |
-| T5 Scenes 7–8: model on infinite table, top view closing, CTA first-floor extrusion | S9, S10, S11 | inline | pending | — |
+| T1 Scaffold, tokens, HTML scenes, preloader, CAD cursor, CTA | S2, S3–S10 text, S11 cursor, S12–S14, S16 a11y, S17–S19 | inline | done | `8600ead`; whatsapp + quality tests green |
+| T2 3D core: deferred boot, renderer, Lenis+ScrollTrigger master timeline, camera rig, grain, scene 1 | S1, S3, S14, S15 | inline | done | `3748e47`; scenes + params tests green, scene 1 intro checked in browser |
+| T3 Scenes 2–4: sketch wireframe, frosted extrusion, material wave shader | S4–S6, S15 | inline | done | `3b03c3b` + `3748e47`; scenes 2–4 checked at 1440×900 |
+| T4 Scenes 5–6: sun and interior light, cursor light tilt, exploded layers with words | S7, S8, S11 | inline | done | `3b03c3b` + `3748e47`; layer-word hover checked per layer |
+| T5 Scenes 7–8: model on infinite table, top view closing, CTA first-floor extrusion | S9, S10, S11 | inline | done | `3b03c3b` + `3748e47`; model lift and CTA extrusion checked, wa.me href checked |
 | T6 Hardening: mobile tier, reduced motion, a11y, JS budget, inspection, finish review, DESIGN.md, README | S11, S16, S18 | inline | pending | — |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
@@ -44,3 +44,4 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
 - **L2 (2026-10-28, user answer):** "Demo genérica (Recomendado)" — no studio name, placeholder WhatsApp number in `src/config/architect.ts`.
 - **L3 (2026-10-28):** plan approved (stack mirrors `creando-armonia`: Astro 7.4.2, Tailwind 4.3.3, three 0.186.1; plus gsap 3.15.0, lenis 1.3.27, vitest). Impeccable: brief-pinned direction, code-led (no image generation available). Next: T1.
 - **L4 (2026-10-28):** Engram mirror `odd/del-trazo-al-volumen/tasks` PENDING: write refused with `session_project_mismatch` (runtime session is bound to the scratch project the session started in). Resync once a session bound to `web-arquitectura` exists.
+- **L5 (2026-10-28):** T2–T5 landed as two commits, not four: the scenes share `timeline.ts` and `main.ts`, so per-scene commits would split single files. `3b03c3b` holds the building modules, `3748e47` the scroll experience. Fixes found in the browser: sketch ribbons culled (DoubleSide); 3D lagging the DOM (render on the timeline's own onUpdate, the trigger's does not fire during scrub catch-up); despiece words shifted (a zero GSAP transform on their container became their containing block; words now anchor to each layer's right-most projected edge). Checks: `pnpm test` 24/24, `pnpm check` 0 errors, `pnpm build` ok, `pnpm budget` 189.1 KB gzip of 250 KB. Next: T6.
