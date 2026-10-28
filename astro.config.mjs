@@ -37,5 +37,8 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    // The scene chunk (three, gsap, lenis) is large on purpose and loads after the first paint;
+    // the real limit is the 250 KB gzip budget enforced by `pnpm budget`.
+    build: { chunkSizeWarningLimit: 800 },
   },
 });

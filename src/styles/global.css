@@ -68,11 +68,20 @@ html.lenis body {
   .phrase {
     font-family: var(--font-display);
     font-weight: 400;
-    font-size: clamp(2.25rem, 1.1rem + 4.6vw, 6rem);
-    line-height: 1.02;
+    font-size: clamp(2.1rem, 0.95rem + 3.5vw, 5rem);
+    line-height: 1.04;
     letter-spacing: -0.02em;
     text-wrap: balance;
     max-width: 13ch;
+  }
+
+  /* A sentence in two clauses sets each clause on its own line. */
+  .phrase-clauses {
+    max-width: none;
+  }
+
+  .phrase-clauses > span {
+    display: block;
   }
 
   .phrase em {

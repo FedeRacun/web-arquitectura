@@ -97,4 +97,26 @@ const empty = !Astro.slots.has('default');
     padding: 14svh 1.25rem 12svh;
     text-align: center;
   }
+
+  /* Reduced motion: nothing is pinned or faded; each sentence rides its own section over the still building. */
+  :global(.js-experience.reduced-motion) .story-scene-content {
+    position: sticky;
+    inset: auto;
+    top: 0;
+    display: grid;
+    align-content: end;
+    justify-items: start;
+    height: 100lvh;
+    padding: 0 clamp(1.25rem, 6vw, 6rem) 12svh;
+    opacity: 1;
+    translate: none;
+    text-align: left;
+  }
+
+  :global(.js-experience.reduced-motion) [data-placement='center'] {
+    justify-items: center;
+    align-content: center;
+    gap: 3rem;
+    text-align: center;
+  }
 </style>

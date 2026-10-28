@@ -26,6 +26,16 @@ const { title, description } = Astro.props;
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <Font cssVariable="--font-dm-serif-display" preload />
     <Font cssVariable="--font-dm-sans" preload={[{ weight: 500 }]} />
+    <script is:inline>
+      // Before the first paint: the experience takes over and the point of light covers the page until the scene is ready.
+      (function () {
+        var root = document.documentElement;
+        var canvas = document.createElement('canvas');
+        if (!(canvas.getContext('webgl2') || canvas.getContext('webgl'))) return;
+        root.classList.add('js-experience');
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) root.classList.add('reduced-motion');
+      })();
+    </script>
   </head>
   <body>
     <slot />
