@@ -204,8 +204,8 @@ export function createPointer(options: PointerOptions) {
           top = Math.max(top, corner.y);
           bottom = Math.min(bottom, corner.y);
         }
-        const x = ((right + 1) / 2) * innerWidth + 12;
-        const y = ((1 - (top + bottom) / 2) / 2) * innerHeight;
+        const x = ((right + 1) / 2) * options.canvas.clientWidth + 12;
+        const y = ((1 - (top + bottom) / 2) / 2) * options.canvas.clientHeight;
         element.style.setProperty('--x', `${x.toFixed(1)}px`);
         element.style.setProperty('--y', `${y.toFixed(1)}px`);
       });

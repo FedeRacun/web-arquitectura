@@ -204,8 +204,9 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   }
 
   function resize() {
-    const width = innerWidth;
-    const height = innerHeight;
+    // The canvas's own box, not the window's: a classic scrollbar takes its width out of the stage.
+    const width = dom.canvas.clientWidth || innerWidth;
+    const height = dom.canvas.clientHeight || innerHeight;
     renderer.setSize(width, height, false);
     rig.resize(width, height);
     renderer.getDrawingBufferSize(buffer);
@@ -216,7 +217,8 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     plot.pointUniforms.uSize.value = 34 * pixelRatio;
     requestRender();
   }
-  addEventListener('resize', resize);
+  // The canvas, not the window: a scrollbar that comes or goes resizes the stage without a window resize.
+  new ResizeObserver(resize).observe(dom.canvas);
   resize();
 
   // The first frame compiles every program while the preloader still covers the page.
