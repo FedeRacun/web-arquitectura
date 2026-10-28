@@ -66,7 +66,9 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T15 Carport and grill under the cantilever | S26 | inline | discarded (user decision) | tried uncommitted and shown, see L42; restored to `4614553` |
 | T16 East glass set back 0.90 m | S26 | inline | done | `4614553`, see L40; test 76/76 (RED observed first), check 0 errors, budget 198.5 KB |
 | T17 Process copy: stages, layer glosses, closing, title; README deploy section | S27 | inline (copy proposed by one marketing reviewer sub-agent, read-only) | done | `2f6078d` (copy), `7e790f1` (deploy docs), see L48; test 76/76, check 0 errors, budget 198.6 KB; no unit RED (copy, CSS and camera framing), checked in captures |
-| T18 Other projects: optional plan levels, three audited plans, the side slide | S28 | inline, plus three parallel writers for the plan configs (disjoint files) | pending | after T17's PR is merged |
+| T18 Plan sheets for any house: optional upper floor, blade, canopy, galería and terrace in the drawing; a dev-only sheet viewer | S28 | delegated writer (Writer trigger: parallel with T20 on disjoint files; parent context near the backstop) | in progress | branch `feat/otros-proyectos` |
+| T19 Three project plans, each grounded on a published modern house and audited by the architect reviewer | S28 | three parallel delegated writers, one file each (`src/config/projects/<id>.ts`), after T18 | pending | |
+| T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | in progress | branch `feat/otros-proyectos` |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
 
@@ -151,3 +153,7 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
   - **Docs:** README (intro, layer words, a new Deploy section), DESIGN.md (Note and Stage roles, measures, six placements, the named rule, layer copy), PRODUCT.md (principle on process copy) and `.impeccable/design.json`.
   - **Checks:** test 76/76, check 0 errors, budget 198.6 KB gzip.
   - **Risk:** item 6. Whether text clears the 3D is checked only by the captures, and the framing shifts move every scene from scene 1 to the closing.
+- **L49 (2026-10-28, user, verbatim):** "Sí, pusheá feat/textos-proceso y abrí el PR 1 contra main." Opened https://github.com/FedeRacun/web-arquitectura/pull/1. Asked about Auto-fix; answer: "Not now". Then: "mergealo y vamos con el PR2".
+  - **Before merging:** the PR's only check, "Workers Builds: web-arquitectura", had failed. It started and completed in the same second (17:33:42Z). Its output carries no log, and the built-in browser has no Cloudflare session, so the log was not read. `pnpm verify` is green locally and `main` had no build to compare, so the failure points at the Cloudflare setup rather than the code. It is reported to the user, not fixed here.
+  - **Merge:** PR 1 merged with a merge commit, `43f8979`, which keeps the work-unit commits.
+  - **PR 2:** `feat/otros-proyectos` is cut from `main` at `43f8979`. T18 and T20 run as parallel writers on disjoint files, the parent owning git; T19 follows T18.
