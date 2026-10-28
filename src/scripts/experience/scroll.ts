@@ -13,6 +13,8 @@ import { createGuide, type GuidePath } from './guide';
 export interface Scroll {
   lenis: Lenis | null;
   stop(): void;
+  /** Holds the page like stop(), but keeps the next gesture's direction and takes that step on start(). */
+  hold(): void;
   start(): void;
   scrollToEnd(): void;
   /** Glides to a story progress (a keyboard user reaching a control in another scene). */
@@ -31,6 +33,7 @@ export function startScroll(reducedMotion: boolean): Scroll {
     return {
       lenis: null,
       stop: () => hold(true),
+      hold: () => hold(true),
       start: () => hold(false),
       scrollToEnd: () => window.scrollTo({ top: document.documentElement.scrollHeight }),
       // Focus already brings the control into view on the browser's own scroll.
@@ -42,8 +45,16 @@ export function startScroll(reducedMotion: boolean): Scroll {
 
   let guide: ReturnType<typeof createGuide> | null = null;
   let walked: GuidePath | null = null;
-  // A step asked for before the walk exists (the hint pressed during the intro) is taken once it does.
-  let pending = false;
+  // A step asked for before the walk can take it is taken once it can: the hint pressed during the intro,
+  // or a gesture made while the camera glides back from the other projects (hold()).
+  let pending: 1 | -1 | 0 = 0;
+  let keeping = false;
+  const take = () => {
+    if (!guide || !pending || lenis.isStopped) return;
+    const direction = pending;
+    pending = 0;
+    guide.walk(direction);
+  };
   const lenis = new Lenis({
     lerp: 0.075,
     wheelMultiplier: 0.85,
@@ -57,21 +68,36 @@ export function startScroll(reducedMotion: boolean): Scroll {
 
   return {
     lenis,
-    stop: () => lenis.stop(),
-    start: () => lenis.start(),
+    stop() {
+      keeping = false;
+      lenis.stop();
+    },
+    hold() {
+      keeping = true;
+      pending = 0;
+      lenis.stop();
+    },
+    start() {
+      keeping = false;
+      lenis.start();
+      take();
+    },
     scrollToEnd: () => lenis.scrollTo(document.documentElement.scrollHeight, { duration: 2.4 }),
     reach(progress) {
       if (walked) lenis.scrollTo(walked.toScroll(progress), { duration: 2.4 });
     },
     guide(path) {
       walked = path;
-      guide = createGuide(lenis, path);
+      guide = createGuide(lenis, path, (direction) => {
+        if (keeping) pending = direction;
+        return keeping;
+      });
       addEventListener('keydown', guide.keydown);
-      if (pending) guide.walk(1);
+      take();
     },
     next() {
-      if (guide) guide.walk(1);
-      else pending = true;
+      pending = 1;
+      take();
     },
   };
 }

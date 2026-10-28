@@ -285,11 +285,16 @@ const { projects } = architect;
 
   /*
    * What shows at each step. Closed: nothing. The row: the heading, the way back, the labels once
-   * their plans are drafted. A plan in focus: the way back, its label and the pager.
+   * their plans are drafted. A plan in focus: the way back, its label and the pager. What is not
+   * shown is hidden too, not just transparent, so neither Tab nor the pointer can reach it: visibility
+   * switches when the fade starts on the way in and when it ends on the way out.
    */
   :global(.js-experience) :is(.projects-title, .projects-back, .projects-item, .projects-pager) {
     opacity: 0;
-    transition: opacity 0.6s var(--ease-settle);
+    visibility: hidden;
+    transition:
+      opacity 0.6s var(--ease-settle),
+      visibility 0s linear 0.6s;
   }
 
   :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager) {
@@ -299,17 +304,26 @@ const { projects } = architect;
   :global(.js-experience) .projects[data-mode='list'] .projects-title,
   :global(.js-experience) .projects[data-mode] .projects-back {
     opacity: 1;
-    transition: opacity 1.2s var(--ease-settle) 0.9s;
+    visibility: visible;
+    transition:
+      opacity 1.2s var(--ease-settle) 0.9s,
+      visibility 0s linear 0.9s;
   }
 
   :global(.js-experience) .projects[data-mode] .projects-item {
     opacity: 1;
-    transition: opacity 1.2s var(--ease-settle) 2.6s;
+    visibility: visible;
+    transition:
+      opacity 1.2s var(--ease-settle) 2.6s,
+      visibility 0s linear 2.6s;
   }
 
   :global(.js-experience) .projects[data-mode='focus'] .projects-pager {
     opacity: 1;
-    transition: opacity 1.2s var(--ease-settle) 0.6s;
+    visibility: visible;
+    transition:
+      opacity 1.2s var(--ease-settle) 0.6s,
+      visibility 0s linear 0.6s;
   }
 
   /* The veil the reduced-motion crossfade fades the frame to. */
@@ -331,7 +345,10 @@ const { projects } = architect;
 
     :global(.js-experience) .projects[data-mode='list'] .projects-pager {
       opacity: 1;
-      transition: opacity 1.2s var(--ease-settle) 2.6s;
+      visibility: visible;
+      transition:
+        opacity 1.2s var(--ease-settle) 2.6s,
+        visibility 0s linear 2.6s;
     }
 
     :global(.js-experience) .projects-pager {

@@ -299,14 +299,21 @@ export function createProjects(options: ProjectsOptions) {
   const size = () => ({ width: options.canvas.clientWidth || innerWidth, height: options.canvas.clientHeight || innerHeight });
 
   // Reduced motion: no travel. The frame fades to the base colour, the camera cuts, the frame fades back.
+  // A change asked for while the veil is still rising joins that cut, so no cut is ever dropped
+  // (an arrow pressed just after opening would otherwise leave the view open over the house).
   let fade: gsap.core.Timeline | null = null;
-  const crossfade = (change: () => void, done?: () => void) => {
+  let cuts: (() => void)[] = [];
+  const crossfade = (change: () => void) => {
+    cuts.push(change);
+    if (cuts.length > 1) return;
     fade?.kill();
     fade = gsap
-      .timeline({ onComplete: done })
+      .timeline()
       .to(veil, { opacity: 1, duration: 0.45, ease: 'power1.inOut' })
       .call(() => {
-        change();
+        const due = cuts;
+        cuts = [];
+        for (const cut of due) cut();
         requestRender();
       })
       .to(veil, { opacity: 0, duration: 0.6, ease: 'power1.inOut' });
@@ -344,7 +351,7 @@ export function createProjects(options: ProjectsOptions) {
   };
 
   /** Everything outside the view is inert while it is open, so Tab stays among its controls. */
-  const hold = (held: boolean) => {
+  const seal = (held: boolean) => {
     for (const section of document.querySelectorAll<HTMLElement>('[data-scene], [data-scroll-hint]')) section.inert = held;
   };
 
@@ -364,7 +371,7 @@ export function createProjects(options: ProjectsOptions) {
     current = navigate(current, { type: 'open' }, total);
     options.scroll.stop();
     build();
-    hold(true);
+    seal(true);
     show();
     frame(state.aside === 0);
     aside?.kill();
@@ -383,14 +390,22 @@ export function createProjects(options: ProjectsOptions) {
   function close() {
     current = navigate(current, { type: 'close' }, total);
     hover(-1);
-    hold(false);
+    seal(false);
     show();
     opener.focus({ preventScroll: true });
-    // The scroll walks again from where it was once the camera is back over the model.
+    // The scroll walks again from where it was once the camera is back over the model; a gesture made
+    // on the way back is kept and walked then. Under reduced motion it is free again at the cut.
     const done = () => current.mode === 'closed' && options.scroll.start();
     aside?.kill();
-    if (reducedMotion) crossfade(() => (state.aside = 0), done);
-    else aside = gsap.to(state, { aside: 0, duration: 2.2, ease: SETTLE, onUpdate: requestRender, onComplete: done });
+    if (reducedMotion) {
+      crossfade(() => {
+        state.aside = 0;
+        done();
+      });
+    } else {
+      options.scroll.hold();
+      aside = gsap.to(state, { aside: 0, duration: 2.2, ease: SETTLE, onUpdate: requestRender, onComplete: done });
+    }
   }
 
   /** Goes to `next`, moving the camera where it frames something else. */
@@ -503,7 +518,10 @@ export function createProjects(options: ProjectsOptions) {
     const dy = event.clientY - downY;
     if (Math.hypot(dx, dy) <= 10) {
       const index = sheetAt(event.clientX, event.clientY);
-      if (index >= 0) go(navigate(current, { type: 'focus', index }, total));
+      if (index < 0) return;
+      go(navigate(current, { type: 'focus', index }, total));
+      // The press left the focus on the page itself: it moves to the plan's label.
+      labels[current.index].focus({ preventScroll: true });
     } else if (event.pointerType !== 'mouse' && Math.abs(dx) > 48 && Math.abs(dx) > 1.4 * Math.abs(dy)) {
       step(dx < 0 ? 1 : -1);
     }

@@ -86,7 +86,11 @@ export interface GuidePath {
   toProgress(scroll: number): number;
 }
 
-export function createGuide(lenis: Lenis, path: GuidePath) {
+/**
+ * `held` is offered the direction of each gesture made while the page is held (Lenis stopped: the intro,
+ * the other projects); it returns true when it keeps the step to take once the page walks again.
+ */
+export function createGuide(lenis: Lenis, path: GuidePath, held?: (direction: 1 | -1) => boolean) {
   const gate = createGestureGate();
   let heading: number | null = null;
 
@@ -112,8 +116,14 @@ export function createGuide(lenis: Lenis, path: GuidePath) {
     walk,
     /** Lenis's hook for every wheel and touch event; false keeps Lenis from scrolling by itself. */
     virtualScroll({ deltaY, event }: VirtualScrollData): boolean {
-      // The intro holds the page (Lenis swallows the event); pinch-zoom stays the browser's.
-      if (lenis.isStopped || event.ctrlKey || ('touches' in event && event.touches.length > 1)) return true;
+      // Pinch-zoom stays the browser's.
+      if (event.ctrlKey || ('touches' in event && event.touches.length > 1)) return true;
+      // A held page swallows the gesture (Lenis does, while stopped), and offers its direction to whoever holds it.
+      if (lenis.isStopped) {
+        const direction = gate.feed(event.type, deltaY, event.timeStamp);
+        if (direction) held?.(direction);
+        return true;
+      }
       // Stop the browser's own scroll; touchstart and touchend stay untouched so taps still click.
       if (event.cancelable && (event.type === 'wheel' || event.type === 'touchmove')) event.preventDefault();
       const direction = gate.feed(event.type, deltaY, event.timeStamp);
@@ -121,7 +131,7 @@ export function createGuide(lenis: Lenis, path: GuidePath) {
       return false;
     },
     keydown(event: KeyboardEvent) {
-      if (lenis.isStopped || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
       const focused = event.target instanceof Element ? event.target : null;
       if (focused?.closest('input, select, textarea, [contenteditable]')) return;
       let direction = PAGING_KEYS[event.key];
@@ -129,6 +139,10 @@ export function createGuide(lenis: Lenis, path: GuidePath) {
       // Space presses a focused button (the scroll hint); the arrows and Page keys still walk from it.
       if (event.key === ' ' && focused?.closest('button')) return;
       if (event.key === ' ' && event.shiftKey) direction = -1;
+      if (lenis.isStopped) {
+        if (!event.repeat && held?.(direction)) event.preventDefault();
+        return;
+      }
       event.preventDefault();
       if (!event.repeat) walk(direction);
     },

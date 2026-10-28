@@ -1,6 +1,9 @@
+import type Lenis from 'lenis';
+import type { VirtualScrollData } from 'lenis';
 import { Vector3 } from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createCameraRig, lens, poseCamera, type CameraView } from './camera';
+import { createGuide } from './guide';
 import { blendView, navigate, projectsView, rowLayout, safeArea, type ProjectsNav } from './projects';
 import { createState } from './state';
 
@@ -157,5 +160,44 @@ describe('navigate', () => {
   it('ignores steps and picks while closed', () => {
     expect(navigate(closed, { type: 'step', by: 1 }, 3)).toEqual(closed);
     expect(navigate(closed, { type: 'focus', index: 1 }, 3)).toEqual(closed);
+  });
+});
+
+describe('a gesture while the camera glides back from the other projects', () => {
+  // The page is held (Lenis stopped) until the camera is back over the model.
+  const setup = () => {
+    const lenis = { animatedScroll: 0, isScrolling: false, isStopped: true, scrollTo: vi.fn() };
+    const held = vi.fn(() => true);
+    const guide = createGuide(lenis as unknown as Lenis, { toScroll: (p) => p * 1000, toProgress: (y) => y / 1000 }, held);
+    return { lenis, held, guide };
+  };
+  const wheel = (deltaY: number, timeStamp: number) =>
+    ({ deltaY, event: { type: 'wheel', deltaY, timeStamp, cancelable: true, ctrlKey: false, preventDefault: vi.fn() } }) as unknown as VirtualScrollData;
+  const key = (key: string) => ({ key, target: null, repeat: false, preventDefault: vi.fn() }) as unknown as KeyboardEvent;
+
+  it('is handed over as one step in its direction, once per gesture, and does not move the page', () => {
+    const { lenis, held, guide } = setup();
+    for (let t = 0; t < 120; t += 16) guide.virtualScroll(wheel(30, 1000 + t));
+    expect(held).toHaveBeenCalledOnce();
+    expect(held).toHaveBeenCalledWith(1);
+    expect(lenis.scrollTo).not.toHaveBeenCalled();
+    // A new gesture the other way turns the held step round.
+    guide.virtualScroll(wheel(-30, 2000));
+    expect(held).toHaveBeenLastCalledWith(-1);
+  });
+
+  it('hands over a paging key too, and keeps it from the browser only when the step is taken', () => {
+    vi.stubGlobal('Element', class {});
+    const { lenis, held, guide } = setup();
+    const down = key('ArrowDown');
+    guide.keydown(down);
+    expect(held).toHaveBeenCalledWith(1);
+    expect(down.preventDefault).toHaveBeenCalled();
+    held.mockReturnValueOnce(false);
+    const up = key('ArrowUp');
+    guide.keydown(up);
+    expect(up.preventDefault).not.toHaveBeenCalled();
+    expect(lenis.scrollTo).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });
