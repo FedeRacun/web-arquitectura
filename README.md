@@ -72,8 +72,9 @@ CSS variable names.
   writes that state into the camera, lights and uniforms.
 - **Guided scroll.** [`guide.ts`](src/scripts/experience/guide.ts) turns the
   first nudge of each gesture (a wheel turn, a swipe, an arrow, Page or Space
-  key) into a slow glide to the next sentence, then rests there. The stops are
-  the `rest` values in [`scenes.ts`](src/scripts/experience/scenes.ts). The
+  key) into a slow glide to the next scene, then rests there: on each sentence,
+  on the sketch drawn halfway and on the sun halfway across. The stops are the
+  `rest` values in [`scenes.ts`](src/scripts/experience/scenes.ts). The
   scrollbar, Home and End still move freely.
 - **One custom shader.** [`materialWave.ts`](src/scripts/experience/building/materialWave.ts)
   patches the standard material. It handles the extrusion, the three material

@@ -4,8 +4,8 @@ import { nextStop, scrollScreens } from './scenes';
 
 /*
  * The scroll as a guided walk. The first nudge of a gesture (a wheel turn, a
- * swipe, a paging key) carries the page slowly to the next sentence and rests
- * there; the rest of that gesture and a trackpad's trailing inertia are
+ * swipe, a paging key) carries the page slowly to the next scene's rest (see
+ * scenes.ts) and stops there; the rest of that gesture and a trackpad's trailing inertia are
  * swallowed. A new gesture walks on, or turns the walk round. The scrollbar,
  * Home and End still move freely; the next gesture walks on from wherever the
  * page was left.
