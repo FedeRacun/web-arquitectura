@@ -1,4 +1,5 @@
 import { plan } from './plan';
+import { projects } from './projects';
 
 /*
  * Everything that changes from one architect to the next. The building is
@@ -21,6 +22,8 @@ export const architect = {
     /** The floor plans the house is drawn and raised from (src/config/plan.ts). */
     plan,
   },
+  /** The studio's other houses, drafted beside the model in scene 7 (src/config/projects.ts). */
+  projects,
   materials: {
     concrete: '#a5a29e',
     wood: '#8b5a34',

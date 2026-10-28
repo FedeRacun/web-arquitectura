@@ -137,6 +137,68 @@ html.lenis body {
     max-width: 64ch;
   }
 
+  /*
+   * "Ver otros proyectos", under the model's sentence: a quiet control, not a second call to action.
+   * The plain page lists the houses right after it, so there it is not needed.
+   */
+  .projects-open {
+    display: none;
+  }
+
+  .js-experience .projects-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 1.4rem;
+    padding: 0.5rem 0;
+    border: 0;
+    background: none;
+    color: var(--color-bone);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem);
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .projects-open-label {
+    opacity: 0.8;
+    transition: opacity 0.6s var(--ease-settle);
+  }
+
+  .projects-open-arrow {
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+    transition: translate 0.6s var(--ease-settle);
+  }
+
+  .projects-open:is(:hover, :focus-visible) .projects-open-label {
+    opacity: 1;
+  }
+
+  .projects-open:is(:hover, :focus-visible) .projects-open-arrow {
+    translate: 0.35rem 0;
+  }
+
+  /* While the other projects are open the model's sentence and its button step aside with the house. */
+  .mesa-lead {
+    transition: opacity 0.9s var(--ease-settle) 0.6s;
+  }
+
+  [data-projects] .mesa-lead {
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-settle);
+  }
+
+  /* Reduced motion keeps every sentence in the page's flow: behind the veil, they all leave the frame. */
+  .reduced-motion[data-projects] .story-scene-content {
+    visibility: hidden;
+  }
+
   .closing-action {
     display: grid;
     justify-items: start;

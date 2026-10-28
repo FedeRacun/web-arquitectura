@@ -1,6 +1,7 @@
 ---
 import CadCursor from '../components/CadCursor.astro';
 import ExplodedWords from '../components/ExplodedWords.astro';
+import OtherProjects from '../components/OtherProjects.astro';
 import Preloader from '../components/Preloader.astro';
 import SceneCanvas from '../components/SceneCanvas.astro';
 import ScrollHint from '../components/ScrollHint.astro';
@@ -56,8 +57,24 @@ import Base from '../layouts/Base.astro';
     </StoryScene>
 
     <StoryScene id="mesa" placement="left-low">
-      <p class="phrase">Cada terreno pide su <em>propia</em> casa.</p>
+      <div class="mesa-lead">
+        <p class="phrase">Cada terreno pide su <em>propia</em> casa.</p>
+        <button
+          type="button"
+          class="projects-open"
+          data-projects-open
+          aria-expanded="false"
+          aria-controls="otros-proyectos"
+        >
+          <span class="projects-open-label">Ver otros proyectos</span>
+          <svg class="projects-open-arrow" viewBox="0 0 30 12" width="30" height="12" aria-hidden="true">
+            <path d="M0.5 6H28.5M24 1.5L28.5 6L24 10.5"></path>
+          </svg>
+        </button>
+      </div>
     </StoryScene>
+    <!-- Over the scene, the row of plans the button above opens; on the plain page, a list after the model's sentence. -->
+    <OtherProjects />
 
     <StoryScene id="cierre" placement="center">
       <h2 class="phrase phrase-clauses">¿Empezamos por tu <em>terreno</em>?</h2>

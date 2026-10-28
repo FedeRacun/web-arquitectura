@@ -68,7 +68,7 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T17 Process copy: stages, layer glosses, closing, title; README deploy section | S27 | inline (copy proposed by one marketing reviewer sub-agent, read-only) | done | `2f6078d` (copy), `7e790f1` (deploy docs), see L48; test 76/76, check 0 errors, budget 198.6 KB; no unit RED (copy, CSS and camera framing), checked in captures |
 | T18 Plan sheets for any house: optional upper floor, blade, canopy, galería and terrace in the drawing; a dev-only sheet viewer | S28 | delegated writer (Writer trigger: parallel with T20 on disjoint files; parent context near the backstop) | done | see L50 |
 | T19 Three project plans, each grounded on a published modern house and audited by the architect reviewer | S28 | three parallel delegated writers, one file each (`src/config/projects/<id>.ts`), after T18 | pending | |
-| T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | in progress | branch `feat/otros-proyectos` |
+| T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | done | see L51 |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
 
@@ -171,3 +171,26 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
     - Project sheets are placed with `sheetOffset`.
     - The viewer showed a short "0,15" span where the last axis sits on the east wall. This is a drawing rule that already applies to the main house, so it is left as is.
   - **Risk:** item 3. It changes shared drawing code the main house uses. Covered by the fingerprint and the pinned test.
+  - **Commit:** `6a4715e`.
+  - **Assessment:** medium (`executable_change` on the dev page), `under_budget`. RDD is off, so the writer's own verification plus the parent spot check close it.
+- **L51 (2026-10-28, T20 evidence):**
+  - **Controller:** `projects.ts` holds the pure parts and the view controller.
+    - The pure parts are the row layout, the camera blend, the focus framing and the `navigate` reducer, with modes `closed | list | focus`.
+    - The controller builds the sheets lazily (40 px/m desktop, 24 mobile), moves the camera, picks, and handles keys, swipe, the reduced-motion veil and the labels.
+  - **Camera:** `state.aside` (0..1) blends the timeline camera into the projects view. `camera.ts` exports `poseCamera`, and its rig math is unchanged.
+  - **Scroll:** `scroll.ts` gains `reach()`. Under reduced motion, `stop()`/`start()` hold the page with `overflow: clip`.
+  - **Pointer:** `pointer.ts` gains `paused()`, so the model lift and the layer hover stand down while the view is open.
+  - **Markup:** `OtherProjects.astro` is a real `nav` list, which reads with no JS or WebGL. The mesa scene gets the "Ver otros proyectos" button with an authored SVG arrow.
+  - **Data:** `src/config/projects.ts` (`Project.plan: SheetPlan`) and three PLACEHOLDER files that reuse the main plan. They are wired from `architect.ts`. README and DESIGN.md are updated.
+  - **Writer's choices:**
+    - In focus mode the back control reads "Volver a la lista".
+    - The pager is labelled "Proyecto anterior" / "Proyecto siguiente".
+    - The label is "Casa {name}", so `name` is stored without "Casa".
+    - Focus goes to the heading on open.
+  - **RED:** `projects.test.ts` failed with the module missing; 12 tests after.
+  - **Checks:**
+    - Writer: test 99/99, check 0, build, budget 202.0 KB gzip.
+    - Captured flows at 1440, at 375 and under reduced motion: the scroll position is kept, Escape goes focus → list → closed, focus returns to the button, and one wheel step after closing reaches the closing scene.
+    - Parent: `pnpm check` 0 errors; looked at the 1440 mesa, list and focus captures and the 375 sheet.
+  - **Not verified:** 60 fps on a real device with the row open; the scrollbar width under `overflow: clip` on browsers with classic scrollbars.
+  - **Risk:** item 4. Async ordering between the camera tweens, `scroll.stop()`/`start()` and the scrub. Covered by the reducer tests and the captured flows.

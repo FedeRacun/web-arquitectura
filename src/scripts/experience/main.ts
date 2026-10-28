@@ -11,8 +11,9 @@ import { createTable } from './building/table';
 import { createCameraRig } from './camera';
 import { createLighting } from './lighting';
 import { createPointer } from './pointer';
+import { createProjects, type Projects } from './projects';
 import type { Quality } from './quality';
-import { SCENES, sceneAt, type SceneId } from './scenes';
+import { SCENES, sceneAt, sceneSpans, type SceneId } from './scenes';
 import { startScroll } from './scroll';
 import { createState, type ExperienceState } from './state';
 import { createTimeline } from './timeline';
@@ -34,6 +35,12 @@ const TABLE = '#8f877b';
 const EXPLODE_GAP = 7.5;
 /** Lamp intensity over the model (candela; the lamp is ~75 m away). */
 const LAMP = 520;
+/** How much wider the lamp's cone opens over the other projects' row (radians). */
+const LAMP_SPREAD = 0.1;
+/** The lamp's share over that row: a glow under the sheets that keeps the labels legible on the table. */
+const LAMP_OVER_PROJECTS = 0.35;
+/** The first of the other projects lies this far east of the model's plot. */
+const PROJECTS_CLEARANCE = 40;
 /** Pixel ratios the renderer steps down through when frames run late. */
 const RATIO_STEPS = [2, 1.5, 1.25, 1];
 /** Height the closing button extrudes: the ground floor. */
@@ -92,10 +99,11 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   plot.board.material.opacity = 0;
   // The board first, then the plan drawn on it, then the frosted walls rising from the plan.
   plot.board.renderOrder = -2;
+  const font = await letteringFont();
   const sheet = createPlanSheet(architect.building.plan, site, {
     color: BONE,
     pixelsPerMetre: lowDetail ? 60 : 118,
-    font: await letteringFont(),
+    font,
     offset: planOffset(architect.building.plan),
     height: architect.building.plan.heights.slab,
     maxSize: renderer.capabilities.maxTextureSize,
@@ -105,6 +113,10 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
 
   const table = createTable({ base: BASE, table: TABLE }, quality.shadows);
   scene.add(table.surface, table.lamp);
+  const lampHome = table.lamp.position.clone();
+  const lampAngle = table.lamp.angle;
+  /** The other projects, once the page is running (projects.ts). */
+  let projects: Projects | null = null;
 
   const [baseVolume] = building.volumes;
   const lighting = createLighting(scene, {
@@ -127,8 +139,10 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
 
   /** Writes the state into the scene. */
   function apply(s: ExperienceState) {
-    rig.apply(s);
+    const view = projects ? projects.view(s) : s;
+    rig.apply(view);
     lighting.apply(s);
+    projects?.apply(s);
 
     shared.uGrow.value = Math.max(s.grow, s.ctaGrow);
     shared.uWave.value = s.wave;
@@ -162,14 +176,17 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     plot.board.material.opacity = Math.max(s.ground, s.model);
     plot.board.material.color.copy(ground).lerp(balsa, s.model);
     plot.board.visible = plot.board.material.opacity > 0.001;
-    // The endless table exists only in scene 7; elsewhere the ground beyond the plot is the void.
-    table.surface.visible = s.table > 0.001;
+    // The endless table exists only in scene 7 and under the other projects; elsewhere the ground beyond the plot is the void.
+    table.surface.visible = Math.max(s.table, s.aside) > 0.001;
     table.surface.material.color.copy(table.dark).lerp(table.lit, s.table);
-    table.lamp.intensity = s.table * LAMP;
+    table.lamp.intensity = (s.table + (LAMP_OVER_PROJECTS - s.table) * s.aside) * LAMP;
+    // The lamp follows the camera to the other projects, its pool opening over their row.
+    table.lamp.position.set(lampHome.x + view.targetX - s.targetX, lampHome.y, lampHome.z + view.targetZ - s.targetZ);
+    table.lamp.angle = lampAngle + LAMP_SPREAD * s.aside;
 
     // Fog follows the camera: the table runs out of sight at any distance.
     const fog = scene.fog as Fog;
-    const reach = rig.camera.position.distanceTo(new Vector3(s.targetX, s.targetY, s.targetZ));
+    const reach = rig.camera.position.distanceTo(new Vector3(view.targetX, view.targetY, view.targetZ));
     fog.near = reach * 1.15;
     fog.far = reach * 2.9;
   }
@@ -201,6 +218,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   function draw() {
     apply(state);
     if (currentScene === 'despiece') placeWords?.();
+    if (state.aside > 0) projects?.place();
     renderer.render(scene, rig.camera);
   }
 
@@ -229,6 +247,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
       lines.uniforms.uWidth.value = (lowDetail ? 1.5 : 1.6) * pixelRatio;
     }
     plot.pointUniforms.uSize.value = 34 * pixelRatio;
+    projects?.resize();
     requestRender();
   }
   // The canvas, not the window: a scrollbar that comes or goes resizes the stage without a window resize.
@@ -281,6 +300,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
         touch: quality.touch,
         scene: () => currentScene,
         layerOffset,
+        paused: () => state.aside > 0,
         requestRender,
       });
   placeWords = pointer ? () => pointer.placeWords() : null;
@@ -289,6 +309,12 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     if (dom.cta) dom.cta.style.pointerEvents = reachable ? 'auto' : 'none';
   };
   setCtaReachable(quality.reducedMotion);
+  // "Ver otros proyectos" answers the pointer only in its own scene, like the closing button.
+  const projectsButton = document.querySelector<HTMLElement>('[data-projects-open]');
+  const setProjectsReachable = (reachable: boolean) => {
+    if (projectsButton) projectsButton.style.pointerEvents = reachable ? 'auto' : 'none';
+  };
+  setProjectsReachable(quality.reducedMotion);
   // A keyboard user reaching the button is taken to the scene it belongs to,
   // including one who tabbed to it while the intro was still playing.
   const reachCta = () => currentScene !== 'cierre' && scroll.scrollToEnd();
@@ -306,7 +332,10 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
         const next = sceneAt(progress);
         if (next !== currentScene) {
           currentScene = next;
-          if (!quality.reducedMotion) setCtaReachable(next === 'cierre');
+          if (!quality.reducedMotion) {
+            setCtaReachable(next === 'cierre');
+            setProjectsReachable(next === 'mesa');
+          }
           pointer?.sceneChanged(next);
         }
         pointer?.progressed();
@@ -321,6 +350,28 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
       toProgress: (y) => (y - trigger.start) / (trigger.end - trigger.start),
     });
   }
+
+  projects = createProjects({
+    projects: architect.projects,
+    scene,
+    renderer,
+    camera: rig.camera,
+    canvas: dom.canvas,
+    state,
+    scroll,
+    font,
+    colors: { bone: BONE, board: GROUND },
+    lowDetail,
+    shadows: quality.shadows,
+    reducedMotion: quality.reducedMotion,
+    start: site.width / 2 + PROJECTS_CLEARANCE,
+    floor: table.surface.position.y,
+    requestRender,
+  });
+  // A keyboard user reaching "Ver otros proyectos" from another scene is taken to the model on the table.
+  const mesa = SCENES.findIndex(({ id }) => id === 'mesa');
+  const mesaRest = sceneSpans()[mesa].start + (sceneSpans()[mesa].end - sceneSpans()[mesa].start) * SCENES[mesa].rest;
+  projectsButton?.addEventListener('focus', () => currentScene !== 'mesa' && state.aside === 0 && scroll.reach(mesaRest));
   requestRender();
 
   /** Scene 1: the point of light leaves the centre, finds a corner and draws the plot. */

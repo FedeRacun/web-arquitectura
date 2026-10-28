@@ -31,6 +31,8 @@ export interface PointerOptions {
   touch: boolean;
   scene(): SceneId;
   layerOffset(index: number): number;
+  /** True while the camera is away at the other projects (projects.ts): the model and the layers rest. */
+  paused(): boolean;
   requestRender(): void;
 }
 
@@ -125,6 +127,11 @@ export function createPointer(options: PointerOptions) {
   /** Hover (or a tap) at a screen point, in whichever scene is showing. */
   const probe = (clientX: number, clientY: number, toggle: boolean) => {
     const scene = options.scene();
+    if (options.paused()) {
+      showLayer(null);
+      liftModel(false);
+      return;
+    }
     setRay(clientX, clientY);
     if (scene === 'despiece' && state.explode > 0.6) {
       const layer = layerUnderRay();
