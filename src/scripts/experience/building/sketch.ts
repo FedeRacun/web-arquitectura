@@ -27,6 +27,8 @@ export interface Sketch {
   uniforms: {
     uDraw: IUniform<number>;
     uOpacity: IUniform<number>;
+    /** Lines are cut above this height (object space), so a sketch can rise with a volume. */
+    uClip: IUniform<number>;
     uWidth: IUniform<number>;
     uResolution: IUniform<Vector2>;
   };
@@ -69,8 +71,10 @@ const VERTEX = /* glsl */ `
   varying float vSide;
   varying float vReach;
   varying float vSeed;
+  varying float vHeight;
 
   void main() {
+    vHeight = position.y;
     mat4 mvp = projectionMatrix * modelViewMatrix;
     vec4 current = mvp * vec4(position, 1.0);
     vec4 previous = mvp * vec4(aPrev, 1.0);
@@ -92,17 +96,20 @@ const VERTEX = /* glsl */ `
 const FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
   uniform float uOpacity;
+  uniform float uClip;
   varying float vAlong;
   varying float vSide;
   varying float vReach;
   varying float vSeed;
+  varying float vHeight;
 
   float sketchHash(vec2 p) {
     return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453);
   }
 
   void main() {
-    if (vAlong > vReach || vReach <= 0.0) discard;
+    // The tolerance keeps a trembling horizontal stroke whole once the clip reaches its height.
+    if (vAlong > vReach || vReach <= 0.0 || vHeight > uClip + 0.15) discard;
     float edge = 1.0 - smoothstep(0.35, 1.0, abs(vSide));
     float tooth = sketchHash(vec2(floor(vAlong * 260.0 + vSeed * 97.0), floor(vSide * 3.0)));
     float charcoal = 0.55 + 0.45 * tooth;
@@ -189,6 +196,7 @@ export function createSketch(lines: SketchLine[], color: string, options: Sketch
   const uniforms = {
     uDraw: { value: 0 },
     uOpacity: { value: 1 },
+    uClip: { value: 1e6 },
     uWidth: { value: 1.5 },
     uResolution: { value: new Vector2(1, 1) },
     uColor: { value: new Color(color) },

@@ -22,7 +22,7 @@ export function createLighting(scene: Scene, options: { shadows: boolean; interi
   sun.target.position.copy(TARGET);
   sun.castShadow = options.shadows;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.radius = 1.5;
+  sun.shadow.radius = 0.6;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   const frustum = sun.shadow.camera;

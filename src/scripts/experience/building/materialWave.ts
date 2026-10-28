@@ -76,21 +76,21 @@ const NOISE = /* glsl */ `
     return sum;
   }
 
-  // Board-formed concrete: 1.2 x 0.6 m panels, their seams and six tie holes each.
+  // Board-formed concrete: 1.2 x 0.6 m panels, their seams and four tie holes each.
+  // Drawn on both tiers: it is what makes the wall read as Ando's concrete and not as grey board.
   vec3 concreteSurface(vec2 uv) {
     float mottling = waveFbm(uv * 1.6) * 0.65 + waveFbm(uv * 11.0) * 0.35;
     vec3 color = uColor * (0.8 + 0.3 * mottling);
-    #ifndef LOW_DETAIL
-      vec2 panel = vec2(1.2, 0.6);
-      vec2 local = fract(uv / panel) * panel;
-      float footprint = max(fwidth(uv.x), fwidth(uv.y));
-      float detail = 1.0 - smoothstep(0.01, 0.04, footprint);
-      float edge = min(min(local.x, panel.x - local.x), min(local.y, panel.y - local.y));
-      float seam = 1.0 - smoothstep(0.004, 0.004 + max(footprint, 0.006), edge);
-      vec2 hole = vec2(local.x < 0.6 ? 0.3 : 0.9, local.y < 0.3 ? 0.15 : 0.45);
-      float tie = 1.0 - smoothstep(0.016, 0.016 + max(footprint, 0.008), length(local - hole));
-      color *= 1.0 - detail * (0.18 * seam + 0.55 * tie);
-    #endif
+    vec2 panel = vec2(1.2, 0.6);
+    vec2 local = fract(uv / panel) * panel;
+    float footprint = max(fwidth(uv.x), fwidth(uv.y));
+    // Fades only once a panel is a few pixels across, where the pattern would alias.
+    float detail = 1.0 - smoothstep(0.03, 0.1, footprint);
+    float edge = min(min(local.x, panel.x - local.x), min(local.y, panel.y - local.y));
+    float seam = 1.0 - smoothstep(0.004, 0.004 + max(footprint, 0.006), edge);
+    vec2 hole = vec2(local.x < 0.6 ? 0.3 : 0.9, local.y < 0.3 ? 0.15 : 0.45);
+    float tie = 1.0 - smoothstep(0.04, 0.04 + max(footprint, 0.008), length(local - hole));
+    color *= 1.0 - detail * (0.18 * seam + 0.55 * tie);
     return color;
   }
 
@@ -157,7 +157,7 @@ const SURFACE = /* glsl */ `
 
     totalEmissiveRadiance += uBone * band * 0.85;
     totalEmissiveRadiance += uBone * fresnel * (1.0 - done) * 0.08;
-    totalEmissiveRadiance += uBone * uHighlight * 0.05;
+    totalEmissiveRadiance += uBone * uHighlight * 0.25;
     if (uKind > 1.5) {
       totalEmissiveRadiance += uBone * fresnel * 0.18 * done;
       float warmth = 0.55 + 0.45 * smoothstep(0.0, 3.0, vObj.y - floor(vObj.y / 3.6) * 3.6);

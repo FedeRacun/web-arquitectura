@@ -101,14 +101,17 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   // 4 · La materia. Three waves sweep up the volume: concrete, then wood, then glass.
   put('materia', 0.04, 0.9, { wave: 3 });
   put('materia', 0, 0.3, { sketchOpacity: 0 });
+  // The sun swings round to graze the facade, ready to sweep across it in scene 5.
+  put('materia', 0, 1, { sunAzimuth: 1.3, sunElevation: 0.3 });
   put('materia', 0, 1, { azimuth: 0.74, elevation: 0.22, distance: 40, targetY: 4 });
   put('materia', 0, 0.35, { frameX: -0.13, ease: 'power1.inOut' });
   sentence(tl, c.materia, at('materia', 0.16), at('materia', 0.82));
 
   // 5 · La luz. The scroll moves the sun; the pointer leans it; the interior lights up.
-  put('luz', 0, 0.3, { sunIntensity: 3.1, fill: 0.16, tilt: 1, ease: 'power1.inOut' });
-  put('luz', 0, 1, { sunAzimuth: -1.15, sunElevation: 0.36 });
-  put('luz', 0, 0.45, { azimuth: 0.3, elevation: 0.15, distance: 36, targetY: 3.4, frameX: 0, ease: 'power1.inOut' });
+  // Hard light: almost no fill, so the blade wall and the overhang throw deep shadows across the front.
+  put('luz', 0, 0.3, { sunIntensity: 3.1, fill: 0.05, tilt: 1, ease: 'power1.inOut' });
+  put('luz', 0, 1, { sunAzimuth: -1.15, sunElevation: 0.3 });
+  put('luz', 0, 0.45, { azimuth: 0.3, elevation: 0.15, distance: 40, targetY: 3.4, frameX: 0, ease: 'power1.inOut' });
   put('luz', 0.4, 0.92, { interior: 1 });
   put('luz', 0.88, 1, { tilt: 0 });
 
@@ -130,7 +133,8 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
 
   // 7 · La mesa. The layers settle back and the building becomes a model on an endless table.
   put('mesa', 0, 0.35, { explode: 0, interior: 0, ease: 'power2.inOut' });
-  put('mesa', 0.1, 0.5, { model: 1, table: 1, sunIntensity: 0.7, fill: 0.3, ease: 'power1.inOut' });
+  // Only the lamp lights the table: past its pool the table falls back into the void.
+  put('mesa', 0.1, 0.5, { model: 1, table: 1, sunIntensity: 0.12, fill: 0.06, ease: 'power1.inOut' });
   put('mesa', 0, 1, {
     azimuth: 0.42,
     elevation: 0.42,
@@ -143,7 +147,8 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   sentence(tl, c.mesa, at('mesa', 0.38), at('mesa', 0.85));
 
   // 8 · El cierre. The building goes back into the ground; the empty plot, from above.
-  put('cierre', 0, 0.45, { grow: 0, table: 0, sunIntensity: 1.6, fill: 0.35, ease: 'power1.in' });
+  // The board fades with it: the page ends as it began, a plot drawn in one line on the void.
+  put('cierre', 0, 0.45, { grow: 0, table: 0, ground: 0, sunIntensity: 1.6, fill: 0.35, ease: 'power1.in' });
   put('cierre', 0.42, 0.46, { model: 0, wave: 0 });
   put('cierre', 0, 0.62, {
     azimuth: 0,

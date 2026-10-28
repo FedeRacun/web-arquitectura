@@ -35,6 +35,8 @@ const EXPLODE_GAP = 7.5;
 const LAMP = 520;
 /** Pixel ratios the renderer steps down through when frames run late. */
 const RATIO_STEPS = [2, 1.5, 1.25, 1];
+/** Height the closing button extrudes: the ground floor. */
+const FIRST_FLOOR = architect.building.base.height;
 
 export interface ExperienceDom {
   canvas: HTMLCanvasElement;
@@ -129,7 +131,10 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     model.position.y = s.lift;
 
     sketch.uniforms.uDraw.value = s.sketchDraw;
-    sketch.uniforms.uOpacity.value = s.sketchOpacity * (1 - s.model);
+    // The closing button raises the first floor as a line becoming volume: the sketch rises with it.
+    const rising = s.ctaGrow / FIRST_FLOOR;
+    sketch.uniforms.uOpacity.value = Math.max(s.sketchOpacity, 0.6 * rising) * (1 - s.model);
+    sketch.uniforms.uClip.value = s.ctaGrow > 0.001 ? s.ctaGrow : 1e6;
     plot.outline.uniforms.uDraw.value = s.siteDraw;
     plot.outline.uniforms.uOpacity.value = s.siteOpacity * (1 - 0.65 * s.model);
 
@@ -143,6 +148,8 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     plot.board.material.opacity = Math.max(s.ground, s.model);
     plot.board.material.color.copy(ground).lerp(balsa, s.model);
     plot.board.visible = plot.board.material.opacity > 0.001;
+    // The endless table exists only in scene 7; elsewhere the ground beyond the plot is the void.
+    table.surface.visible = s.table > 0.001;
     table.surface.material.color.copy(table.dark).lerp(table.lit, s.table);
     table.lamp.intensity = s.table * LAMP;
 
@@ -249,7 +256,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
         massing,
         layerBounds: building.layerBounds,
         modelBounds: modelBounds(building.layerBounds, site),
-        firstFloor: architect.building.base.height,
+        firstFloor: FIRST_FLOOR,
         words,
         cta: dom.cta,
         touch: quality.touch,

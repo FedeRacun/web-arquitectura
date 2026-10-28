@@ -90,20 +90,33 @@ const LAYERS = [
     color: var(--color-accent);
   }
 
-  /* Narrow screens leave no room beside the stack: the tapped layer's word reads as a caption below it. */
+  /* Narrow screens leave no room beside the stack: the tapped layer's word reads as a caption below it,
+     hung from its layer by a plumb line that runs down from the layer's height. */
   @media (max-width: 767px) {
     :global(.js-experience) .layer-word {
-      top: auto;
+      top: var(--y, 50svh);
       bottom: 13svh;
       left: 50%;
+      flex-direction: column;
+      gap: 0.75rem;
       translate: -50% 0;
       font-family: var(--font-display);
       font-weight: 400;
       font-size: 2.25rem;
     }
 
-    :global(.js-experience) .layer-leader {
-      display: none;
+    :global(.js-experience) .layer-leader,
+    :global(.js-experience) .layer-word[data-active] .layer-leader {
+      flex: 1;
+      width: 1px;
+      height: auto;
+      transform-origin: center top;
+      scale: 1 0;
+      transition: scale 0.9s var(--ease-settle);
+    }
+
+    :global(.js-experience) .layer-word[data-active] .layer-leader {
+      scale: 1 1;
     }
 
     :global(.js-experience) .layer-label {
