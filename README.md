@@ -70,6 +70,11 @@ CSS variable names.
   every scene on one scrubbed timeline measured in screens of scroll. Each scene
   animates a plain state object; [`main.ts`](src/scripts/experience/main.ts)
   writes that state into the camera, lights and uniforms.
+- **Guided scroll.** [`guide.ts`](src/scripts/experience/guide.ts) turns the
+  first nudge of each gesture (a wheel turn, a swipe, an arrow, Page or Space
+  key) into a slow glide to the next sentence, then rests there. The stops are
+  the `rest` values in [`scenes.ts`](src/scripts/experience/scenes.ts). The
+  scrollbar, Home and End still move freely.
 - **One custom shader.** [`materialWave.ts`](src/scripts/experience/building/materialWave.ts)
   patches the standard material. It handles the extrusion, the three material
   waves (concrete, wood, glass), the warm interior and the balsa model, so
@@ -83,7 +88,8 @@ CSS variable names.
 - **Mobile:** simpler geometry, no shadows and a pixel ratio of at most 1.5.
   Taps replace hovers, and the CAD cursor is hidden.
 - **Reduced motion:** the building stands finished from the start, and only
-  the light follows the scroll.
+  the light follows the scroll. The scroll stays the browser's own, with no
+  guided glide.
 - **Keyboard:** the WhatsApp link is reachable with Tab. Focusing it scrolls
   to the closing scene.
 

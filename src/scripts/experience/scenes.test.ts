@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SCENES, localProgress, sceneAt, sceneSpans, scrollScreens } from './scenes';
+import { SCENES, localProgress, nextStop, restStops, sceneAt, sceneSpans, scrollScreens } from './scenes';
 
 describe('scenes', () => {
   it('lists the eight storyboard scenes in order', () => {
@@ -42,5 +42,32 @@ describe('scenes', () => {
     expect(localProgress((luz.start + luz.end) / 2, 'luz')).toBeCloseTo(0.5, 10);
     expect(localProgress(0, 'luz')).toBe(0);
     expect(localProgress(1, 'luz')).toBe(1);
+  });
+
+  it('rests at the top, at each sentence and at the end', () => {
+    const stops = restStops();
+    expect(stops[0]).toBe(0);
+    expect(stops.at(-1)).toBeCloseTo(1, 10);
+    expect(stops.slice(1, -1).map(sceneAt)).toEqual(['extrusion', 'materia', 'despiece', 'mesa']);
+    for (let i = 1; i < stops.length; i++) expect(stops[i]).toBeGreaterThan(stops[i - 1]);
+  });
+
+  it('finds the next rest in the direction of the gesture', () => {
+    const [top, extrusion, materia] = restStops();
+    expect(nextStop(top, 1)).toBe(extrusion);
+    expect(nextStop((extrusion + materia) / 2, 1)).toBe(materia);
+    expect(nextStop((extrusion + materia) / 2, -1)).toBe(extrusion);
+    expect(nextStop(materia, -1)).toBe(extrusion);
+  });
+
+  it('treats a rest the scroll is a hair away from as already reached', () => {
+    const [, extrusion, materia] = restStops();
+    expect(nextStop(extrusion - 0.001, 1)).toBe(materia);
+    expect(nextStop(extrusion + 0.001, -1)).toBe(restStops()[0]);
+  });
+
+  it('has nowhere to go past the top or the end', () => {
+    expect(nextStop(0, -1)).toBeNull();
+    expect(nextStop(1, 1)).toBeNull();
   });
 });

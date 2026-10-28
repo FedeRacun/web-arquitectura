@@ -98,8 +98,9 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   put('extrusion', 0, 0.45, { frameX: 0.13, ground: 1, ease: 'power1.inOut' });
   sentence(tl, c.extrusion, at('extrusion', 0.22), at('extrusion', 0.8));
 
-  // 4 · La materia. Three waves sweep up the volume: concrete, then wood, then glass.
-  put('materia', 0.04, 0.9, { wave: 3 });
+  // 4 · La materia. Three waves sweep up the volume: concrete, then wood, then glass,
+  // all done before the guided scroll rests on the sentence.
+  put('materia', 0.04, 0.74, { wave: 3 });
   put('materia', 0, 0.3, { sketchOpacity: 0 });
   // The sun swings round to graze the facade, ready to sweep across it in scene 5.
   put('materia', 0, 1, { sunAzimuth: 1.3, sunElevation: 0.3 });

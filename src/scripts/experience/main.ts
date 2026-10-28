@@ -278,7 +278,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   dom.cta?.addEventListener('focus', reachCta);
   if (dom.cta && document.activeElement === dom.cta) reachCta();
 
-  createTimeline(
+  const timeline = createTimeline(
     { story: dom.story, content, hint: dom.hint },
     {
       state,
@@ -294,6 +294,14 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
       },
     },
   );
+  // The walk measures the story the way the timeline does: the trigger's own start and end, kept fresh on resize.
+  const trigger = timeline.scrollTrigger;
+  if (trigger) {
+    scroll.guide({
+      toScroll: (progress) => trigger.start + progress * (trigger.end - trigger.start),
+      toProgress: (y) => (y - trigger.start) / (trigger.end - trigger.start),
+    });
+  }
   requestRender();
 
   /** Scene 1: the point of light leaves the centre, finds a corner and draws the plot. */
