@@ -170,6 +170,7 @@ export function createPointer(options: PointerOptions) {
     cta.addEventListener('pointerdown', (event) => event.pointerType !== 'mouse' && extrude(true));
     cta.addEventListener('focus', () => extrude(true));
     cta.addEventListener('blur', () => extrude(false));
+    if (document.activeElement === cta) extrude(true);
   }
 
   return {
@@ -178,6 +179,8 @@ export function createPointer(options: PointerOptions) {
       if (scene !== 'despiece') showLayer(null);
       if (scene !== 'mesa') liftModel(false);
       if (scene !== 'cierre' && state.ctaGrow > 0) extrude(false);
+      // Focus that arrived on the way (the keyboard shortcut to the end) extrudes once the plot is there.
+      if (scene === 'cierre' && cta && document.activeElement === cta) extrude(true);
       if (!options.touch && (scene === 'despiece' || scene === 'mesa')) probe(lastX, lastY, false);
     },
     /** Hang each word off its layer: from its right-most edge on screen, at its middle height. */

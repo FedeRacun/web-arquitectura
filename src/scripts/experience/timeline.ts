@@ -120,6 +120,7 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
     distance: 82,
     targetY: 14.5,
     frameX: -0.1,
+    portraitPull: 0.55,
     sunIntensity: 2.6,
     sunAzimuth: -0.7,
     sunElevation: 0.62,
@@ -130,7 +131,15 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   // 7 · La mesa. The layers settle back and the building becomes a model on an endless table.
   put('mesa', 0, 0.35, { explode: 0, interior: 0, ease: 'power2.inOut' });
   put('mesa', 0.1, 0.5, { model: 1, table: 1, sunIntensity: 0.7, fill: 0.3, ease: 'power1.inOut' });
-  put('mesa', 0, 1, { azimuth: 0.42, elevation: 0.42, distance: 150, targetY: 1.2, frameX: 0.1, ease: 'power1.inOut' });
+  put('mesa', 0, 1, {
+    azimuth: 0.42,
+    elevation: 0.42,
+    distance: 150,
+    targetY: 1.2,
+    frameX: 0.1,
+    portraitPull: 0.8,
+    ease: 'power1.inOut',
+  });
   sentence(tl, c.mesa, at('mesa', 0.38), at('mesa', 0.85));
 
   // 8 · El cierre. The building goes back into the ground; the empty plot, from above.
@@ -142,6 +151,7 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
     distance: 64,
     targetY: 0,
     frameX: 0,
+    portraitPull: 1,
     siteOpacity: 1,
     sunAzimuth: 0.6,
     sunElevation: 0.9,

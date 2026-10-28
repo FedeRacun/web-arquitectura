@@ -54,6 +54,8 @@ const empty = !Astro.slots.has('default');
 
   :global(.js-experience) .story-scene {
     display: block;
+    /* Block layout honours justify-items too: drop the centring of the plain page. */
+    place-items: normal;
     min-height: 0;
     height: calc(var(--screens) * 100lvh);
     padding: 0;
@@ -113,10 +115,8 @@ const empty = !Astro.slots.has('default');
     text-align: left;
   }
 
+  /* The closing keeps the lower-left place of the other sentences, clear of the standing building. */
   :global(.js-experience.reduced-motion) [data-placement='center'] {
-    justify-items: center;
-    align-content: center;
-    gap: 3rem;
-    text-align: center;
+    gap: 2.5rem;
   }
 </style>

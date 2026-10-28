@@ -263,8 +263,11 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     if (dom.cta) dom.cta.style.pointerEvents = reachable ? 'auto' : 'none';
   };
   setCtaReachable(quality.reducedMotion);
-  // A keyboard user reaching the button is taken to the scene it belongs to.
-  dom.cta?.addEventListener('focus', () => currentScene !== 'cierre' && scroll.scrollToEnd());
+  // A keyboard user reaching the button is taken to the scene it belongs to,
+  // including one who tabbed to it while the intro was still playing.
+  const reachCta = () => currentScene !== 'cierre' && scroll.scrollToEnd();
+  dom.cta?.addEventListener('focus', reachCta);
+  if (dom.cta && document.activeElement === dom.cta) reachCta();
 
   createTimeline(
     { story: dom.story, content, hint: dom.hint },
@@ -317,9 +320,11 @@ function finishedBuilding(state: ExperienceState, height: number) {
     point: 0,
     azimuth: 0.62,
     elevation: 0.3,
-    distance: 44,
+    distance: 50,
     targetY: 3.2,
-    frameY: 0,
+    // The sentences ride the lower left; the building stands right of and above them.
+    frameX: 0.16,
+    frameY: -0.1,
     sunIntensity: 2.8,
     fill: 0.2,
   });

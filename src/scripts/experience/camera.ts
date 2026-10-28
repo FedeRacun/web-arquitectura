@@ -31,11 +31,11 @@ export function createCameraRig(): CameraRig {
       height = h;
       camera.aspect = w / h;
       const aspect = w / h;
-      fit = aspect < COMPOSED_ASPECT ? Math.min(Math.pow(COMPOSED_ASPECT / aspect, 0.8), 2.6) : 1;
+      fit = aspect < COMPOSED_ASPECT ? Math.min(Math.pow(COMPOSED_ASPECT / aspect, 0.9), 3) : 1;
       camera.updateProjectionMatrix();
     },
     apply(state) {
-      const distance = state.distance * fit;
+      const distance = state.distance * (1 + (fit - 1) * state.portraitPull);
       target.set(state.targetX, state.targetY, state.targetZ);
       camera.position.set(
         target.x + distance * Math.cos(state.elevation) * Math.sin(state.azimuth),

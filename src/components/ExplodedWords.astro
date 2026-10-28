@@ -90,6 +90,27 @@ const LAYERS = [
     color: var(--color-accent);
   }
 
+  /* Narrow screens leave no room beside the stack: the tapped layer's word reads as a caption below it. */
+  @media (max-width: 767px) {
+    :global(.js-experience) .layer-word {
+      top: auto;
+      bottom: 13svh;
+      left: 50%;
+      translate: -50% 0;
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: 2.25rem;
+    }
+
+    :global(.js-experience) .layer-leader {
+      display: none;
+    }
+
+    :global(.js-experience) .layer-label {
+      translate: 0 0.5rem;
+    }
+  }
+
   /* Reduced motion keeps the building whole: the words read as a plain column. */
   :global(.js-experience.reduced-motion) .layer-words {
     position: static;
