@@ -22,7 +22,9 @@ const EXT = 0.3;
 const PART = 0.15;
 
 export const plan: Plan = {
-  heights: { slab: 0.25, ground: 3.6, upper: 3.4, door: 2.1, parapet: 1.0 },
+  // Each floor is a 0.28 m post-tensioned slab, enough for the 8.10 m span between the axes, under 0.12 m
+  // of build-up for the floor, its falls and the roof's insulation. Floor to floor stays 3.35 m.
+  heights: { slab: 0.4, structure: 0.28, ground: 3.75, upper: 3.4, door: 2.1, parapet: 1.0 },
   column: 0.3,
   grid: {
     x: [
@@ -226,7 +228,7 @@ export const plan: Plan = {
 
   // The west wall, in exposed concrete: it runs 1.50 m past the house at each end and up to the roof of
   // the upper bar, so it is the back wall of the terrace too. Its south wing carries the canopy.
-  blade: { x: [0, EXT], z: [-1.5, 11.7], height: 7.0 },
+  blade: { x: [0, EXT], z: [-1.5, 11.7], height: 7.15 },
   canopy: { x: [EXT, 3.6], z: [-1.2, 0] },
   galeria: { x: [15, 21.6], z: [0, 8.4] },
   // The terrace sits a step below the upper floor, so the door's threshold can be sealed. Only its west

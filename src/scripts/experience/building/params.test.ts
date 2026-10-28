@@ -47,6 +47,10 @@ describe('deriveBuilding', () => {
     expect(full.height).toBe(plan.blade.height);
   });
 
+  it('starts the second storey of the interior light where the upper floor is', () => {
+    expect(full.storey).toBe(levelHeights(plan, 'upper').floor);
+  });
+
   it('builds the blade into the house: no other part runs into it', () => {
     const blade = full.volumes[2];
     const into = (b: Box) => [0, 1, 2].every((axis) => Math.min(b.max[axis], blade.max[axis]) - Math.max(b.min[axis], blade.min[axis]) > 1e-6);

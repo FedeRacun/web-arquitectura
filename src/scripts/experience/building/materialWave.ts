@@ -21,6 +21,7 @@ export interface SharedUniforms {
   uGrow: IUniform<number>;
   uWave: IUniform<number>;
   uHeight: IUniform<number>;
+  uStorey: IUniform<number>;
   uInterior: IUniform<number>;
   uModel: IUniform<number>;
   uBone: IUniform<Color>;
@@ -38,11 +39,16 @@ export interface WaveMaterial {
 
 export const KIND_INDEX: Record<MaterialKind, number> = { concrete: 0, wood: 1, glass: 2 };
 
-export function createSharedUniforms(height: number, colors: { bone: string; interior: string; balsa: string }): SharedUniforms {
+export function createSharedUniforms(
+  height: number,
+  storey: number,
+  colors: { bone: string; interior: string; balsa: string },
+): SharedUniforms {
   return {
     uGrow: { value: 0 },
     uWave: { value: 0 },
     uHeight: { value: height },
+    uStorey: { value: storey },
     uInterior: { value: 0 },
     uModel: { value: 0 },
     uBone: { value: new Color(colors.bone) },
@@ -160,7 +166,7 @@ const SURFACE = /* glsl */ `
     totalEmissiveRadiance += uBone * uHighlight * 0.25;
     if (uKind > 1.5) {
       totalEmissiveRadiance += uBone * fresnel * 0.18 * done;
-      float warmth = 0.55 + 0.45 * smoothstep(0.0, 3.0, vObj.y - floor(vObj.y / 3.6) * 3.6);
+      float warmth = 0.55 + 0.45 * smoothstep(0.0, 3.0, vObj.y - floor(vObj.y / uStorey) * uStorey);
       totalEmissiveRadiance += uInteriorColor * uInterior * done * warmth * (1.0 - uModel) * 1.4;
     }
   }
@@ -200,6 +206,7 @@ export function createWaveMaterial(
         `#include <common>
         uniform float uWave;
         uniform float uHeight;
+        uniform float uStorey;
         uniform float uInterior;
         uniform float uModel;
         uniform float uKind;

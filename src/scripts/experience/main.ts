@@ -74,7 +74,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   // The model: building, sketch, plot board and outline lift together in scene 7.
   const model = new Group();
   scene.add(model);
-  const shared = createSharedUniforms(building.height, {
+  const shared = createSharedUniforms(building.height, building.storey, {
     bone: BONE,
     interior: architect.materials.interior,
     balsa: architect.materials.balsa,

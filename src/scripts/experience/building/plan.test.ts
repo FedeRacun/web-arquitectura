@@ -106,6 +106,15 @@ describe('the plan data', () => {
     expect((plan.upper.voids ?? []).some((well) => contains(well, { x: stair.x, z: stair.z }))).toBe(true);
   });
 
+  it('gives each floor a slab with room for its build-up, without changing the storey height or the stair', () => {
+    const { slab, structure } = plan.heights;
+    expect(slab - structure).toBeGreaterThanOrEqual(0.1);
+    const ground = levelHeights(plan, 'ground');
+    const upper = levelHeights(plan, 'upper');
+    expect(upper.floor - ground.floor).toBeCloseTo(3.35, 10);
+    for (const level of [ground, upper]) expect(level.ceiling - level.floor).toBeGreaterThanOrEqual(2.6);
+  });
+
   it('stacks the upper floor on the ground floor and cantilevers it past the east wall', () => {
     expect(plan.upper.slab.x[0]).toBeGreaterThan(plan.ground.slab.x[0]);
     expect(plan.upper.slab.x[1] - plan.ground.slab.x[1]).toBeGreaterThan(3);
@@ -219,7 +228,11 @@ describe('the drawn plan', () => {
   it('dimensions the blade past both ends of the house on the west, and notes what it is', () => {
     const west = drawing.labels.filter((label) => label.quarter && label.at[0] < plan.blade.x[0]).map((label) => label.text);
     expect(west).toEqual(['1,50', '10,20', '1,50']);
-    expect(drawing.labels.map((label) => label.text)).toContain('MURO H° VISTO e 0,30 · h +7,00');
+    expect(drawing.labels.map((label) => label.text)).toContain('MURO H° VISTO e 0,30 · h +7,15');
+  });
+
+  it('notes the upper slab in projection with the depth of its post-tensioned concrete', () => {
+    expect(drawing.labels.map((label) => label.text)).toContain('PROYECCIÓN LOSA P. ALTA · POSTESADA e=0,28');
   });
 
   it('draws the canopy over the front door dashed, above the cut', () => {

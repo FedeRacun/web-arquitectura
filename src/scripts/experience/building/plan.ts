@@ -127,8 +127,10 @@ export interface GridAxis {
 
 export interface Plan {
   readonly heights: {
-    /** Slab thickness. */
+    /** Slab thickness, with the floor's build-up. */
     readonly slab: number;
+    /** Of that, the structural concrete. */
+    readonly structure: number;
     /** Ground to the upper floor (the top of its slab). */
     readonly ground: number;
     /** Upper floor to the top of the roof. */
@@ -812,7 +814,7 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
     drawing.labels.push({
       ink: 'note',
       at: [plan.upper.slab.x[1] - 0.25, plan.upper.slab.z[0] + 0.5],
-      text: `PROYECCIÓN LOSA P. ALTA · POSTESADA e=${fmt(plan.heights.slab)}`,
+      text: `PROYECCIÓN LOSA P. ALTA · POSTESADA e=${fmt(plan.heights.structure)}`,
       size: TEXT.small,
       align: 'right',
     });

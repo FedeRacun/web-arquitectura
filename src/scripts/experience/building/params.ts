@@ -59,6 +59,8 @@ export interface Building {
   /** Base, upper bar and blade, in that order. */
   volumes: [Box, Box, Box];
   height: number;
+  /** Level of the upper floor, where the interior light starts its second storey. */
+  storey: number;
   layerBounds: Record<LayerId, Box>;
   sketch: SketchLine[];
 }
@@ -283,6 +285,7 @@ export function deriveBuilding(config: BuildingConfig, detail: Detail): Building
     parts,
     volumes: [baseBox, upperBox, bladeBox],
     height: Math.max(top, plan.blade.height),
+    storey: groundHeight,
     layerBounds,
     sketch,
   };
