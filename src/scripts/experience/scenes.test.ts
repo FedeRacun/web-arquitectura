@@ -44,33 +44,26 @@ describe('scenes', () => {
     expect(localProgress(1, 'luz')).toBe(1);
   });
 
-  it('rests at the top, in every scene between and at the end', () => {
+  it('rests at the top, at each sentence, on the light and at the end; the sketch is drawn on the way', () => {
     const stops = restStops();
     expect(stops[0]).toBe(0);
     expect(stops.at(-1)).toBeCloseTo(1, 10);
-    expect(stops.slice(1, -1).map(sceneAt)).toEqual(['lineas', 'extrusion', 'materia', 'luz', 'despiece', 'mesa']);
+    expect(stops.slice(1, -1).map(sceneAt)).toEqual(['extrusion', 'materia', 'luz', 'despiece', 'mesa']);
     for (let i = 1; i < stops.length; i++) expect(stops[i]).toBeGreaterThan(stops[i - 1]);
   });
 
-  it('rests on the sketch halfway drawn', () => {
-    const lineas = restStops()[1];
-    expect(localProgress(lineas, 'lineas')).toBeGreaterThan(0.35);
-    expect(localProgress(lineas, 'lineas')).toBeLessThan(0.65);
-  });
-
   it('finds the next rest in the direction of the gesture', () => {
-    const [top, lineas, extrusion, materia] = restStops();
-    expect(nextStop(top, 1)).toBe(lineas);
-    expect(nextStop(lineas, 1)).toBe(extrusion);
+    const [top, extrusion, materia] = restStops();
+    expect(nextStop(top, 1)).toBe(extrusion);
     expect(nextStop((extrusion + materia) / 2, 1)).toBe(materia);
     expect(nextStop((extrusion + materia) / 2, -1)).toBe(extrusion);
     expect(nextStop(materia, -1)).toBe(extrusion);
   });
 
   it('treats a rest the scroll is a hair away from as already reached', () => {
-    const [, lineas, extrusion, materia] = restStops();
+    const [top, extrusion, materia] = restStops();
     expect(nextStop(extrusion - 0.001, 1)).toBe(materia);
-    expect(nextStop(extrusion + 0.001, -1)).toBe(lineas);
+    expect(nextStop(extrusion + 0.001, -1)).toBe(top);
   });
 
   it('has nowhere to go past the top or the end', () => {

@@ -73,8 +73,8 @@ CSS variable names.
 - **Guided scroll.** [`guide.ts`](src/scripts/experience/guide.ts) turns the
   first nudge of each gesture (a wheel turn, a swipe, an arrow, Page or Space
   key) into a glide to the next scene. The glide starts fast, settles into a
-  slow, even pace while the scene plays and lands softly. It rests on each sentence,
-  on the sketch drawn halfway and on the sun halfway across. The stops are the
+  slow, even pace while the scene plays and lands softly. It rests on each
+  sentence and on the sun halfway across; the sketch is drawn on the way. The stops are the
   `rest` values in [`scenes.ts`](src/scripts/experience/scenes.ts). The
   scrollbar, Home and End still move freely.
 - **One custom shader.** [`materialWave.ts`](src/scripts/experience/building/materialWave.ts)

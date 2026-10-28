@@ -5,16 +5,17 @@
  * and the master timeline places each scene at the same fraction, so DOM and
  * scene never drift apart.
  *
- * `rest` is where the guided scroll stops in each scene (see timeline.ts). In
- * a scene with a sentence, just before the sentence leaves, when the scene has
- * played out and its sentence is still on screen. In the two without one, mid
- * gesture: the sketch drawn halfway, the sun halfway across with the interior
- * lighting up and the light leaning to the pointer.
+ * `rest` is where the guided scroll stops in a scene (see timeline.ts). In a
+ * scene with a sentence, just before the sentence leaves, when the scene has
+ * played out and its sentence is still on screen. Luz has no sentence but
+ * rests too, with the sun halfway across, the interior lighting up and the
+ * light leaning to the pointer. Líneas has no rest: a half-drawn sketch the
+ * visitor did not choose to stop on reads as empty, so it is drawn on the way.
  */
 
 export const SCENES = [
   { id: 'vacio', screens: 1, rest: 0 },
-  { id: 'lineas', screens: 1.2, rest: 0.46 },
+  { id: 'lineas', screens: 1.2 },
   { id: 'extrusion', screens: 1.2, rest: 0.76 },
   { id: 'materia', screens: 1.5, rest: 0.78 },
   { id: 'luz', screens: 1.2, rest: 0.66 },
