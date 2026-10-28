@@ -20,6 +20,8 @@ import type { Plan } from '../scripts/experience/building/plan';
 
 const EXT = 0.3;
 const PART = 0.15;
+// The outer face of the cantilever's east glass, 0.90 m inside the end of its long walls and slabs.
+const EAST_GLASS = 20.7;
 
 export const plan: Plan = {
   // Each floor is a 0.28 m post-tensioned slab, enough for the 8.10 m span between the axes, under 0.12 m
@@ -142,22 +144,23 @@ export const plan: Plan = {
         z: [8.1, 8.4],
         openings: [
           { type: 'window', at: 0.9, width: 9.3, sill: 1.0, head: 2.5, mullions: [3.525, 7.275] },
-          { type: 'window', at: 10.8, width: 5.4, sill: 1.0, head: 2.5 },
+          { type: 'window', at: 10.8, width: 5.1, sill: 1.0, head: 2.5 },
         ],
       },
-      // West: the door out to the terrace; east: the cantilever's end, glazed floor to ceiling.
+      // West: the door out to the terrace; east: the cantilever's end, glazed floor to ceiling and set
+      // back, so the long walls and the slabs frame it and shade it from the low morning sun.
       {
         kind: 'concrete',
         x: [4.5, 4.5 + EXT],
         z: [EXT, 8.1],
         openings: [{ type: 'door', at: 1.3, width: 0.9, hinge: 'min', side: 1 }],
       },
-      { kind: 'concrete', x: [21.6 - EXT, 21.6], z: [EXT, 8.1], openings: [{ type: 'glass', at: 2.4, width: 5.4 }] },
+      { kind: 'concrete', x: [EAST_GLASS - EXT, EAST_GLASS], z: [EXT, 8.1], openings: [{ type: 'glass', at: 2.4, width: 5.4 }] },
       // The south band: bath, linen, the suite's bath over the ground floor's east wall (where its
       // stack comes down) and the dressing room at the end of the cantilever.
       {
         kind: 'partition',
-        x: [11.19, 21.6 - EXT],
+        x: [11.19, EAST_GLASS - EXT],
         z: [2.55, 2.55 + PART],
         openings: [
           { type: 'door', at: 0.25, width: 0.7, hinge: 'min', side: -1 },
@@ -198,11 +201,11 @@ export const plan: Plan = {
       { name: 'Dormitorio 1', abbr: 'Dorm. 1', rect: { x: [4.5 + EXT, 8.85], z: [4.05, 8.1] }, label: [6.8, 5.1] },
       { name: 'Dormitorio 2', abbr: 'Dorm. 2', rect: { x: [9.0, 12.6], z: [4.05, 8.1] }, label: [10.6, 5.1] },
       { name: 'Estudio', rect: { x: [12.75, 15], z: [4.05, 8.1] }, label: [13.9, 5.6] },
-      { name: 'Dormitorio principal', abbr: 'Dorm. ppal.', rect: { x: [15.15, 21.6 - EXT], z: [2.7, 8.1] }, label: [18.2, 4.0] },
+      { name: 'Dormitorio principal', abbr: 'Dorm. ppal.', rect: { x: [15.15, EAST_GLASS - EXT], z: [2.7, 8.1] }, label: [18.2, 4.0] },
       { name: 'Baño 1', rect: { x: [11.34, 13.59], z: [EXT, 2.55] }, label: [12.75, 1.3] },
       { name: 'Blancos', abbr: 'Bl.', rect: { x: [13.74, 15], z: [EXT, 2.55] }, label: [14.37, 1.35] },
       { name: 'Baño principal', abbr: 'Baño ppal.', rect: { x: [15.15, 18.15], z: [EXT, 2.55] }, label: [17.03, 1.35] },
-      { name: 'Vestidor', rect: { x: [18.3, 21.6 - EXT], z: [EXT, 2.55] }, label: [19.6, 1.55] },
+      { name: 'Vestidor', abbr: 'Vest.', rect: { x: [18.3, EAST_GLASS - EXT], z: [EXT, 2.55] }, label: [19.05, 1.3] },
     ],
     fixtures: [
       // The beds' heads against the partitions, not under the ribbon window's sill.
@@ -221,8 +224,8 @@ export const plan: Plan = {
       { kind: 'tub', rect: { x: [15.15, 15.9], z: [EXT, 2.0] }, facing: 'e' },
       { kind: 'basin', rect: { x: [16.0, 17.0], z: [EXT, 0.85] }, facing: 'n' },
       { kind: 'wc', rect: { x: [17.3, 17.7], z: [EXT, 0.95] }, facing: 'n' },
-      { kind: 'wardrobe', rect: { x: [18.3, 21.3], z: [EXT, 0.9] }, facing: 'n' },
-      { kind: 'wardrobe', rect: { x: [20.7, 21.3], z: [0.9, 2.55] }, facing: 'w' },
+      { kind: 'wardrobe', rect: { x: [18.3, EAST_GLASS - EXT], z: [EXT, 0.9] }, facing: 'n' },
+      { kind: 'wardrobe', rect: { x: [EAST_GLASS - EXT - 0.6, EAST_GLASS - EXT], z: [0.9, 2.55] }, facing: 'w' },
     ],
   },
 

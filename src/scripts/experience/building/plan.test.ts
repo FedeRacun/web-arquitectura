@@ -120,6 +120,21 @@ describe('the plan data', () => {
     expect(plan.upper.slab.x[1] - plan.ground.slab.x[1]).toBeGreaterThan(3);
   });
 
+  it("sets the cantilever's east glass 0.90 m back, framed by the bar's long walls and its slabs", () => {
+    const { slab, walls, rooms, fixtures } = plan.upper;
+    const end = slab.x[1];
+    const glazed = walls.filter((wall) => !runsAlongX(wall) && wall.openings?.some((opening) => opening.type === 'glass'));
+    expect(glazed).toHaveLength(1);
+    const [glass] = glazed;
+    expect(end - glass.x[1]).toBeCloseTo(0.9, 10);
+    const sides = walls.filter((wall) => runsAlongX(wall) && wall.kind === 'concrete' && wall.x[1] === end);
+    expect(sides).toHaveLength(2);
+    expect(Math.min(...sides.map((wall) => wall.z[0]))).toBeLessThan(glass.z[0]);
+    expect(Math.max(...sides.map((wall) => wall.z[1]))).toBeGreaterThan(glass.z[1]);
+    for (const wall of walls.filter((wall) => !sides.includes(wall))) expect(wall.x[1]).toBeLessThanOrEqual(glass.x[1]);
+    for (const { rect } of [...rooms, ...fixtures]) expect(rect.x[1]).toBeLessThanOrEqual(glass.x[0]);
+  });
+
   it('closes the west side with the blade: flush with the ground floor, past both its ends, up to the roof', () => {
     const { blade, ground, heights } = plan;
     expect(blade.x[0]).toBe(ground.slab.x[0]);

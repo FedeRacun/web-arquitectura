@@ -864,13 +864,14 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
   dimensionString(drawing, [blade.z[0], ground.slab.z[0], ground.slab.z[1], blade.z[1]], 'z', blade.x[0] - 1.0, -0.75);
 
   // Room names, with the area under them and the level where the floor sets one. A name wider
-  // than its room is abbreviated, and an area that does not fit is left off.
+  // than its room, or running into its fittings, is abbreviated, and an area that does not fit is left off.
   for (const room of level.rooms) {
     const [x, z] = room.label ?? centre(room.rect);
     const roomWidth = length(room.rect.x) - 2 * ROOM_MARGIN;
     const fits = (label: Label) => length(labelBox(label).x) <= roomWidth;
+    const clear = (label: Label) => !level.fixtures.some((fixture) => overlaps(labelBox(label), fixture.rect));
     const name: Label = { ink: 'note', at: [x, z - 0.04], text: room.name.toUpperCase(), size: TEXT.room, bold: true, align: 'center', tracking: ROOM_TRACKING };
-    if (!fits(name) && room.abbr) name.text = room.abbr.toUpperCase();
+    if (!(fits(name) && clear(name)) && room.abbr) name.text = room.abbr.toUpperCase();
     drawing.labels.push(name);
     const areaLabel: Label = { ink: 'note', at: [x, z + 0.24], text: fmtArea(area(room.rect)), size: TEXT.area, align: 'center' };
     if (fits(areaLabel)) drawing.labels.push(areaLabel);
