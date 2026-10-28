@@ -2,7 +2,9 @@
 /*
  * The four words of the exploded axonometric, one per layer. They are real
  * text; with the experience running each one hangs off its layer on a
- * leader line and shows when that layer is hovered or tapped.
+ * leader line, dim until that layer is hovered or tapped. Narrow screens have
+ * room for one word at a time: it shows as a caption under the stack, and the
+ * scene lights the four in turn when the layers come apart.
  */
 const LAYERS = [
   { id: 'estructura', word: 'Estructura' },
@@ -71,12 +73,13 @@ const LAYERS = [
       background-color 0.9s var(--ease-settle);
   }
 
+  /* Always readable, so nobody has to find the hover to learn the layers; the hover lights one up. */
   :global(.js-experience) .layer-label {
-    opacity: 0;
-    translate: -0.5rem 0;
+    opacity: 0.6;
     transition:
       opacity 0.9s var(--ease-settle),
-      translate 0.9s var(--ease-settle);
+      translate 0.9s var(--ease-settle),
+      color 0.9s var(--ease-settle);
   }
 
   :global(.js-experience) .layer-word[data-active] .layer-leader {
@@ -120,6 +123,7 @@ const LAYERS = [
     }
 
     :global(.js-experience) .layer-label {
+      opacity: 0;
       translate: 0 0.5rem;
     }
   }

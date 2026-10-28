@@ -287,10 +287,12 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
       onUpdate(progress) {
         requestRender();
         const next = sceneAt(progress);
-        if (next === currentScene) return;
-        currentScene = next;
-        if (!quality.reducedMotion) setCtaReachable(next === 'cierre');
-        pointer?.sceneChanged(next);
+        if (next !== currentScene) {
+          currentScene = next;
+          if (!quality.reducedMotion) setCtaReachable(next === 'cierre');
+          pointer?.sceneChanged(next);
+        }
+        pointer?.progressed();
       },
     },
   );

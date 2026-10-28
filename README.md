@@ -77,6 +77,11 @@ CSS variable names.
   sentence and on the sun halfway across; the sketch is drawn on the way. The stops are the
   `rest` values in [`scenes.ts`](src/scripts/experience/scenes.ts). The
   scrollbar, Home and End still move freely.
+- **Layer words.** In the exploded scene the four words (Estructura,
+  Envolvente, Luz, Habitar) always show, dim, beside their layers; hovering a
+  layer lights its word in copper. On narrow screens only one word fits, as a
+  caption under the stack, so the scene lights the four in turn once the layers
+  have come apart; a tap takes over.
 - **One custom shader.** [`materialWave.ts`](src/scripts/experience/building/materialWave.ts)
   patches the standard material. It handles the extrusion, the three material
   waves (concrete, wood, glass), the warm interior and the balsa model, so

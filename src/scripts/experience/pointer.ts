@@ -9,7 +9,8 @@ import type { ExperienceState } from './state';
  * What the pointer adds to the scroll. Everything here eases in slowly and
  * never overshoots:
  * - scene 5: the sun leans towards the cursor;
- * - scene 6: hovering a layer shows its word on a leader line;
+ * - scene 6: hovering a layer lights its word up on its leader line; where
+ *   only one word fits at a time, the four light up in turn on arrival;
  * - scene 7: hovering the model lifts it a few centimetres;
  * - scene 8: hovering the button extrudes a first floor out of the plot.
  * Touch screens have no hover, so a tap does the same on the layers and the
@@ -73,7 +74,8 @@ export function createPointer(options: PointerOptions) {
     return found;
   };
 
-  const showLayer = (layer: LayerId | null) => {
+  /** `pointed` is false when the scene lights a layer by itself: the cursor is not over it. */
+  const showLayer = (layer: LayerId | null, pointed = true) => {
     if (layer === activeLayer) return;
     activeLayer = layer;
     for (const [id, element] of words) element.toggleAttribute('data-active', id === layer);
@@ -82,7 +84,30 @@ export function createPointer(options: PointerOptions) {
         gsap.to(wave.uHighlight, { value: id === layer ? 1 : 0, duration: 0.9, ease: SETTLE, onUpdate: requestRender });
       }
     }
-    cursor(layer !== null);
+    if (pointed) cursor(layer !== null);
+  };
+
+  // Where one word fits at a time (the caption layout in ExplodedWords.astro), the scene lights the
+  // four layers in turn once they have come apart, so the visitor learns they answer a tap.
+  const captionLayout = matchMedia('(max-width: 767px)');
+  const TOUR_STEP = 1.2;
+  let tour: gsap.core.Timeline | null = null;
+  let toured = false;
+  const stopTour = () => {
+    tour?.kill();
+    tour = null;
+  };
+  const startTour = () => {
+    toured = true;
+    tour = gsap.timeline({
+      delay: 0.5,
+      onComplete: () => {
+        tour = null;
+        showLayer(null, false);
+      },
+    });
+    LAYERS.forEach((layer, index) => tour!.call(() => showLayer(layer, false), undefined, index * TOUR_STEP));
+    tour.set({}, {}, LAYERS.length * TOUR_STEP);
   };
 
   const liftModel = (lifted: boolean) => {
@@ -103,6 +128,9 @@ export function createPointer(options: PointerOptions) {
     setRay(clientX, clientY);
     if (scene === 'despiece' && state.explode > 0.6) {
       const layer = layerUnderRay();
+      // A tap, or a cursor over a layer, takes over from the tour; a cursor over nothing leaves it running.
+      if (tour && !toggle && layer === null) return;
+      stopTour();
       showLayer(toggle && layer === activeLayer ? null : layer);
     } else {
       showLayer(null);
@@ -176,12 +204,22 @@ export function createPointer(options: PointerOptions) {
   return {
     /** Called when the scroll changes scene: hover states do not outlive their scene. */
     sceneChanged(scene: SceneId) {
-      if (scene !== 'despiece') showLayer(null);
+      if (scene !== 'despiece') {
+        // The tour plays again on the next visit.
+        stopTour();
+        toured = false;
+        showLayer(null);
+      }
       if (scene !== 'mesa') liftModel(false);
       if (scene !== 'cierre' && state.ctaGrow > 0) extrude(false);
       // Focus that arrived on the way (the keyboard shortcut to the end) extrudes once the plot is there.
       if (scene === 'cierre' && cta && document.activeElement === cta) extrude(true);
       if (!options.touch && (scene === 'despiece' || scene === 'mesa')) probe(lastX, lastY, false);
+    },
+    /** Called on every scroll update: the tour starts once the layers have come apart. */
+    progressed() {
+      if (toured || options.scene() !== 'despiece' || state.explode < 0.98 || !captionLayout.matches) return;
+      startTour();
     },
     /** Hang each word off its layer: from its right-most edge on screen, at its middle height. */
     placeWords() {

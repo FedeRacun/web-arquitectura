@@ -157,7 +157,7 @@ The one action on the page, held back until the last scene.
 - Opens WhatsApp in a new tab and says so to screen readers ("(se abre en una pestaña nueva)").
 
 ### Leader-line Callout (signature)
-The exploded axonometric's four layer words. Each hangs off its layer on a 1px bone line at 45% strength (clamp(1.75rem, 4vw, 3.5rem) long, 0.9rem gap). Hover or tap lengthens the line to clamp(3rem, 7vw, 6rem), turns it copper, and slides the word in copper from 0.5rem left, all over 0.9s on the settle curve. On narrow screens the line becomes a vertical plumb line that scales down from the layer to a display-serif caption.
+The exploded axonometric's four layer words. Each hangs off its layer on a 1px bone line at 45% strength (clamp(1.75rem, 4vw, 3.5rem) long, 0.9rem gap). The words always read at 60% opacity, so nobody has to find the hover to learn the layers. Hover or tap lengthens the line to clamp(3rem, 7vw, 6rem), turns it copper and lights the word to full copper, all over 0.9s on the settle curve. On narrow screens only one word fits: the line becomes a vertical plumb line that scales down from the layer to a display-serif caption, hidden until active, and the scene lights the four in turn, 1.2s apart, once the layers have come apart.
 
 ### CAD Cursor
 Replaces the pointer on hover-capable devices: a copper crosshair of two 1px arms; over anything interactive the cross folds into a 0.875rem square pick box (0.45s, settle curve).
