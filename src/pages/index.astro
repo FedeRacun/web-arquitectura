@@ -1,0 +1,52 @@
+---
+import CadCursor from '../components/CadCursor.astro';
+import ExplodedWords from '../components/ExplodedWords.astro';
+import Preloader from '../components/Preloader.astro';
+import SceneCanvas from '../components/SceneCanvas.astro';
+import ScrollHint from '../components/ScrollHint.astro';
+import StoryScene from '../components/StoryScene.astro';
+import WhatsAppCta from '../components/WhatsAppCta.astro';
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Del trazo al volumen"
+  description="Un edificio que se levanta con el scroll: del trazo al volumen. Arquitectura que se diseña y se construye."
+>
+  <Preloader />
+  <SceneCanvas />
+
+  <main data-story>
+    <StoryScene id="vacio" placement="center-low">
+      <h1 class="phrase">Primero se piensa. Después se <em>construye</em>.</h1>
+    </StoryScene>
+    <ScrollHint />
+
+    <StoryScene id="lineas" />
+
+    <StoryScene id="extrusion" placement="left-low">
+      <p class="phrase">Diseñar es imaginar el <em>peso</em>.</p>
+    </StoryScene>
+
+    <StoryScene id="materia" placement="right-high">
+      <p class="phrase">Construir es hacerlo <em>existir</em>.</p>
+    </StoryScene>
+
+    <StoryScene id="luz" />
+
+    <StoryScene id="despiece" placement="left-high" label="El despiece">
+      <ExplodedWords />
+    </StoryScene>
+
+    <StoryScene id="mesa" placement="left-low">
+      <p class="phrase">Cada obra empieza como <em>esta</em>.</p>
+    </StoryScene>
+
+    <StoryScene id="cierre" placement="center">
+      <h2 class="phrase">Tu próxima obra.</h2>
+      <WhatsAppCta />
+    </StoryScene>
+  </main>
+
+  <CadCursor />
+</Base>

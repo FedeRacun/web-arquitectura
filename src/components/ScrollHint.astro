@@ -1,0 +1,62 @@
+---
+/* Scene 1's quiet invitation to scroll: a plumb line with a tick sliding down it. */
+---
+
+<div class="scroll-hint" data-scroll-hint aria-hidden="true">
+  <span class="scroll-hint-tick"></span>
+</div>
+
+<style>
+  .scroll-hint {
+    display: none;
+  }
+
+  :global(.js-experience) .scroll-hint {
+    position: fixed;
+    left: 50%;
+    bottom: 3.5svh;
+    z-index: 20;
+    display: block;
+    width: 1px;
+    height: 3.25rem;
+    translate: -50% 0;
+    background: color-mix(in oklab, var(--color-bone) 28%, transparent);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .scroll-hint-tick {
+    position: absolute;
+    left: -2px;
+    top: 0;
+    width: 5px;
+    height: 5px;
+    background: var(--color-bone);
+    animation: plumb 3.2s var(--ease-settle) infinite;
+  }
+
+  @keyframes plumb {
+    0% {
+      translate: 0 0;
+      opacity: 0;
+    }
+    18% {
+      opacity: 1;
+    }
+    82% {
+      opacity: 1;
+    }
+    100% {
+      translate: 0 calc(3.25rem - 5px);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-hint-tick {
+      animation: none;
+      top: auto;
+      bottom: 0;
+    }
+  }
+</style>

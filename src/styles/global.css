@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * Three colours and two faces, nothing else. The accent is overridden per
+ * architect from src/config/architect.ts (Base.astro sets it on <html>).
+ */
+@theme static {
+  --color-*: initial;
+  --color-base: #141210;
+  --color-bone: #ede6da;
+  --color-accent: #b8743a;
+
+  --font-*: initial;
+  --font-display: var(--font-dm-serif-display);
+  --font-body: var(--font-dm-sans);
+  --default-font-family: var(--font-body);
+
+  /* Heavy, unhurried: everything decelerates like a load settling. */
+  --ease-settle: cubic-bezier(0.22, 0.61, 0.24, 1);
+}
+
+@layer base {
+  html {
+    background: var(--color-base);
+    color: var(--color-bone);
+    color-scheme: dark;
+    scrollbar-color: color-mix(in oklab, var(--color-bone) 22%, transparent) var(--color-base);
+    scrollbar-width: thin;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100%;
+    font-family: var(--font-body);
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-base);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-bone);
+    outline-offset: 6px;
+  }
+
+  em {
+    font-style: normal;
+  }
+}
+
+/* Lenis: the document keeps its natural height while it smooths the scroll. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+@layer components {
+  /* One sentence per scene, set large and given air. */
+  .phrase {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.25rem, 1.1rem + 4.6vw, 6rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    max-width: 13ch;
+  }
+
+  .phrase em {
+    color: var(--color-accent);
+  }
+
+  /* Concrete grain over the whole frame, scene included. Generated, never downloaded. */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0.09;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.95 0 0 0 0 0.88 0 0 0 1.6 -0.35'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  }
+}

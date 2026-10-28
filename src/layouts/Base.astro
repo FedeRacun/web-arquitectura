@@ -1,0 +1,33 @@
+---
+import { Font } from 'astro:assets';
+import { architect } from '../config/architect';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" style={`--color-accent: ${architect.accent}`}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#141210" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <Font cssVariable="--font-dm-serif-display" preload />
+    <Font cssVariable="--font-dm-sans" preload={[{ weight: 500 }]} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

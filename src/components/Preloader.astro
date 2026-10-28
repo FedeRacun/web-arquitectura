@@ -1,0 +1,60 @@
+---
+/*
+ * The point of light: covers the page while the scene libraries load after
+ * the first paint, then hands over to the same point drawn in WebGL at the
+ * same spot. Only shown when the experience runs.
+ */
+---
+
+<div class="preloader" data-preloader aria-hidden="true">
+  <span class="preloader-point"></span>
+</div>
+
+<style>
+  .preloader {
+    display: none;
+  }
+
+  :global(.js-experience) .preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    background: var(--color-base);
+    transition: opacity 1.2s var(--ease-settle);
+  }
+
+  :global(.js-experience) .preloader[data-done] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .preloader-point {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-bone);
+    box-shadow:
+      0 0 6px 1px color-mix(in oklab, var(--color-bone) 80%, transparent),
+      0 0 28px 6px color-mix(in oklab, var(--color-bone) 18%, transparent);
+    animation: breathe 2.8s var(--ease-settle) infinite alternate;
+  }
+
+  @keyframes breathe {
+    from {
+      opacity: 0.55;
+      scale: 0.85;
+    }
+    to {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .preloader-point {
+      animation: none;
+    }
+  }
+</style>

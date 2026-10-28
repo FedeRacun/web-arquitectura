@@ -1,0 +1,115 @@
+---
+/*
+ * The four words of the exploded axonometric, one per layer. They are real
+ * text; with the experience running each one hangs off its layer on a
+ * leader line and shows when that layer is hovered or tapped.
+ */
+const LAYERS = [
+  { id: 'estructura', word: 'Estructura' },
+  { id: 'envolvente', word: 'Envolvente' },
+  { id: 'luz', word: 'Luz' },
+  { id: 'habitar', word: 'Habitar' },
+] as const;
+---
+
+<ul class="layer-words" data-layer-words aria-label="Capas del edificio">
+  {
+    LAYERS.map((layer) => (
+      <li class="layer-word" data-layer-word={layer.id}>
+        <span class="layer-leader" aria-hidden="true" />
+        <span class="layer-label">{layer.word}</span>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .layer-words {
+    display: grid;
+    gap: 0.25rem;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.75rem);
+    line-height: 1.05;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .layer-leader {
+    display: none;
+  }
+
+  /* Pinned beside the exploded layers: the scene writes --x/--y for each word. */
+  :global(.js-experience) .layer-words {
+    position: fixed;
+    inset: 0;
+    display: block;
+  }
+
+  :global(.js-experience) .layer-word {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    translate: var(--x, -100vw) calc(var(--y, 0px) - 50%);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem);
+    letter-spacing: 0.01em;
+  }
+
+  :global(.js-experience) .layer-leader {
+    display: block;
+    width: clamp(1.75rem, 4vw, 3.5rem);
+    height: 1px;
+    background: color-mix(in oklab, var(--color-bone) 45%, transparent);
+    transform-origin: left center;
+    transition:
+      width 0.9s var(--ease-settle),
+      background-color 0.9s var(--ease-settle);
+  }
+
+  :global(.js-experience) .layer-label {
+    opacity: 0;
+    translate: -0.5rem 0;
+    transition:
+      opacity 0.9s var(--ease-settle),
+      translate 0.9s var(--ease-settle);
+  }
+
+  :global(.js-experience) .layer-word[data-active] .layer-leader {
+    width: clamp(3rem, 7vw, 6rem);
+    background: var(--color-accent);
+  }
+
+  :global(.js-experience) .layer-word[data-active] .layer-label {
+    opacity: 1;
+    translate: 0 0;
+    color: var(--color-accent);
+  }
+
+  /* Reduced motion keeps the building whole: the words read as a plain column. */
+  :global(.js-experience.reduced-motion) .layer-words {
+    position: static;
+    display: grid;
+  }
+
+  :global(.js-experience.reduced-motion) .layer-word {
+    position: static;
+    translate: none;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.75rem);
+  }
+
+  :global(.js-experience.reduced-motion) .layer-leader {
+    display: none;
+  }
+
+  :global(.js-experience.reduced-motion) .layer-label {
+    opacity: 1;
+    translate: none;
+  }
+</style>

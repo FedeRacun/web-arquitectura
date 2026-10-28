@@ -1,0 +1,39 @@
+---
+import { architect } from '../config/architect';
+import { whatsappUrl } from '../lib/whatsapp';
+
+const href = whatsappUrl(architect.whatsapp.number, architect.whatsapp.message);
+---
+
+<a class="cta" href={href} target="_blank" rel="noopener" data-cta>
+  Escribir por WhatsApp<span class="sr-only"> (se abre en una pestaña nueva)</span>
+</a>
+
+<style>
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.05rem 1.75rem 1.1rem;
+    background: var(--color-accent);
+    color: var(--color-base);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 1.0625rem;
+    letter-spacing: 0.005em;
+    text-decoration: none;
+    pointer-events: auto;
+    transition:
+      background-color 0.6s var(--ease-settle),
+      color 0.6s var(--ease-settle);
+  }
+
+  .cta:hover,
+  .cta[data-active] {
+    background: var(--color-bone);
+  }
+
+  .cta:active {
+    translate: 0 1px;
+  }
+</style>

@@ -1,0 +1,90 @@
+---
+/*
+ * A drafting crosshair in place of the pointer, on devices that hover. Over
+ * anything interactive the cross folds into a small pick box.
+ */
+---
+
+<div class="cad-cursor" data-cad-cursor aria-hidden="true">
+  <span class="cad-arm cad-arm-h"></span>
+  <span class="cad-arm cad-arm-v"></span>
+  <span class="cad-box"></span>
+</div>
+
+<script>
+  import { startCadCursor } from '../scripts/cursor';
+  startCadCursor(document.querySelector<HTMLElement>('[data-cad-cursor]'));
+</script>
+
+<style>
+  .cad-cursor {
+    display: none;
+  }
+
+  :global(html.has-cad-cursor),
+  :global(html.has-cad-cursor *) {
+    cursor: none !important;
+  }
+
+  :global(html.has-cad-cursor) .cad-cursor {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 50;
+    display: block;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-settle);
+  }
+
+  :global(html.has-cad-cursor) .cad-cursor[data-visible] {
+    opacity: 1;
+  }
+
+  .cad-arm,
+  .cad-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition:
+      scale 0.45s var(--ease-settle),
+      opacity 0.45s var(--ease-settle);
+  }
+
+  .cad-arm {
+    background: var(--color-accent);
+  }
+
+  .cad-arm-h {
+    width: 2.25rem;
+    height: 1px;
+    translate: -50% -50%;
+  }
+
+  .cad-arm-v {
+    width: 1px;
+    height: 2.25rem;
+    translate: -50% -50%;
+  }
+
+  .cad-box {
+    width: 0.875rem;
+    height: 0.875rem;
+    translate: -50% -50%;
+    border: 1px solid var(--color-accent);
+    scale: 0.3;
+    opacity: 0;
+  }
+
+  .cad-cursor[data-target] .cad-arm {
+    scale: 0;
+    opacity: 0;
+  }
+
+  .cad-cursor[data-target] .cad-box {
+    scale: 1;
+    opacity: 1;
+  }
+</style>

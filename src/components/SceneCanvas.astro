@@ -1,0 +1,36 @@
+---
+/*
+ * The single WebGL canvas behind the whole page. Its description stands in
+ * for the building for screen readers; the sentences of each scene are real
+ * text in the sections.
+ */
+---
+
+<div class="stage">
+  <canvas
+    data-scene-canvas
+    role="img"
+    aria-label="Un edificio abstracto que se dibuja, se levanta y toma materia a medida que se desplaza la página: primero las líneas sobre el terreno, después los muros, el hormigón, la madera y el vidrio, la luz sobre la fachada, sus capas separadas y, al final, una maqueta sobre una mesa."
+  ></canvas>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<style>
+  .stage {
+    display: none;
+  }
+
+  :global(.js-experience) .stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: block;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: pan-y;
+  }
+</style>

@@ -1,0 +1,100 @@
+---
+import { SCENES, type SceneId } from '../scripts/experience/scenes';
+
+/*
+ * One storyboard scene: a section as tall as its share of the scroll, holding
+ * the scene's only sentence as real text. With the experience running, the
+ * content is pinned to the viewport and faded by the master timeline; without
+ * it, the sections read as a plain sequence of sentences.
+ */
+interface Props {
+  id: SceneId;
+  /** Where the sentence sits over the scene. */
+  placement?: 'center-low' | 'left-low' | 'right-high' | 'left-high' | 'center';
+  label?: string;
+}
+
+const { id, placement = 'center', label } = Astro.props;
+const index = SCENES.findIndex((scene) => scene.id === id);
+const last = index === SCENES.length - 1;
+// The last section adds the final screen the page ends on.
+const screens = SCENES[index].screens + (last ? 1 : 0);
+const empty = !Astro.slots.has('default');
+---
+
+<section
+  id={id}
+  class="story-scene"
+  data-scene={id}
+  data-empty={empty ? '' : undefined}
+  aria-label={label}
+  style={`--screens: ${screens}`}
+>
+  {
+    !empty && (
+      <div class="story-scene-content" data-scene-content data-placement={placement}>
+        <slot />
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .story-scene {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100svh;
+    padding: 6rem 1.5rem;
+  }
+
+  .story-scene[data-empty] {
+    display: none;
+  }
+
+  :global(.js-experience) .story-scene {
+    display: block;
+    min-height: 0;
+    height: calc(var(--screens) * 100lvh);
+    padding: 0;
+  }
+
+  :global(.js-experience) .story-scene-content {
+    position: fixed;
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  :global(.js-experience) [data-placement='center-low'] {
+    left: 50%;
+    bottom: 11svh;
+    translate: -50% 0;
+    text-align: center;
+  }
+
+  :global(.js-experience) [data-placement='left-low'] {
+    left: clamp(1.25rem, 6vw, 6rem);
+    bottom: 12svh;
+  }
+
+  :global(.js-experience) [data-placement='left-high'] {
+    left: clamp(1.25rem, 6vw, 6rem);
+    top: 14svh;
+  }
+
+  :global(.js-experience) [data-placement='right-high'] {
+    right: clamp(1.25rem, 6vw, 6rem);
+    top: 14svh;
+    text-align: right;
+  }
+
+  :global(.js-experience) [data-placement='center'] {
+    inset: 0;
+    display: grid;
+    place-items: center;
+    align-content: space-between;
+    padding: 14svh 1.25rem 12svh;
+    text-align: center;
+  }
+</style>

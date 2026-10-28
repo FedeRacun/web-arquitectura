@@ -1,0 +1,13 @@
+# Cloudflare response headers for static assets (copied to dist/ by Astro).
+# https://developers.cloudflare.com/workers/static-assets/headers/
+
+# Hashed build output (scripts, fonts, images): the file name changes when
+# the content does, so it can be cached forever.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

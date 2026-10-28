@@ -1,0 +1,20 @@
+// Cloudflare deploy for the static Astro build: a Worker with static assets
+// only. No adapter and no Worker script: the site has no on-demand rendering,
+// so Cloudflare only serves `dist/`. Without a script, public/_headers applies
+// to every response.
+// https://developers.cloudflare.com/workers/static-assets/routing/static-site-generation/
+//
+// Node version for Workers Builds comes from .node-version (Cloudflare does
+// not read the `volta` field); keep it in sync with package.json.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Must match the Worker name in the Cloudflare dashboard (Workers Builds).
+  "name": "web-arquitectura",
+  "compatibility_date": "2026-10-28",
+  "assets": {
+    "directory": "./dist",
+    // One-page site: unknown paths get dist/404.html with a real 404 status.
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}
