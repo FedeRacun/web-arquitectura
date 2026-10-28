@@ -65,7 +65,7 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T14 Thicker slabs, 0.40 m with room for the build-up | S26 | inline | done | `f5dbb93`, see L38; test 75/75 (RED observed first), check 0 errors, budget 198.4 KB |
 | T15 Carport and grill under the cantilever | S26 | inline | discarded (user decision) | tried uncommitted and shown, see L42; restored to `4614553` |
 | T16 East glass set back 0.90 m | S26 | inline | done | `4614553`, see L40; test 76/76 (RED observed first), check 0 errors, budget 198.5 KB |
-| T17 Process copy: stages, layer glosses, closing, title; README deploy section | S27 | inline (copy proposed by one marketing reviewer sub-agent, read-only) | in progress | branch `feat/textos-proceso` |
+| T17 Process copy: stages, layer glosses, closing, title; README deploy section | S27 | inline (copy proposed by one marketing reviewer sub-agent, read-only) | done | `2f6078d` (copy), `7e790f1` (deploy docs), see L48; test 76/76, check 0 errors, budget 198.6 KB; no unit RED (copy, CSS and camera framing), checked in captures |
 | T18 Other projects: optional plan levels, three audited plans, the side slide | S28 | inline, plus three parallel writers for the plan configs (disjoint files) | pending | after T17's PR is merged |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
@@ -126,3 +126,28 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
 - **L45 (2026-10-28, user, verbatim):** "Ya tenemos repositorio creado https://github.com/FedeRacun/web-arquitectura" The repository was empty and public, and there was no remote or `main` here. Asked what to do; answer: "Subir como main (Recomendado)". Then: "Considera que este repositorio estara en Cloudflare, no se si requiere alguna configuracion particular" Checked against the Workers Builds docs: nothing in the repo changes. `wrangler.jsonc` (static assets, no script), `public/_headers`, `.node-version` and `packageManager` are read by the build. The dashboard needs the Worker name `web-arquitectura` (it must match `wrangler.jsonc`, or the build fails), build command `pnpm verify`, the default deploy command `npx wrangler deploy`, production branch `main`, and optionally preview builds for the other branches. Done: `main` created at `2569f56`, `origin` added over https (the `gh` protocol), `git push -u origin main`; tracked files scanned for secrets first, none.
 - **L46 (2026-10-28):** Marketing reviewer (read-only sub-agent). Diagnosis: today's lines are an architect's aphorisms for architects ("imaginar el peso", "hacerlo existir"), they name no stage and no deliverable, the impersonal hides who designs and who builds, the layer roles define obvious parts instead of what the studio does with them, and "Tu próxima obra" speaks to someone who has built before. Its mapping keeps the brief's order: scene 3 designs, scene 4 builds (the waves rise concrete, wood, glass, the real order of a site); the despiece is "Por dentro", unnumbered, a look inside the delivered house; the mesa opens the other projects; the closing goes back to step 01, the plot. Placement of "Ver otros proyectos" in the mesa: there the list works as proof, after the process and before the button, and does not compete with WhatsApp.
 - **L47 (2026-10-28):** The plan was approved as written: S27 on `feat/textos-proceso` (PR 1), then S28 on `feat/otros-proyectos` (PR 2), in sequence because both touch `index.astro` and `architect.ts`.
+- **L48 (2026-10-28):** T17 on `feat/textos-proceso`, cut from `main` at `2569f56`.
+  - **Copy:** as S27, in `index.astro`, `ExplodedWords.astro`, `WhatsAppCta.astro` and `architect.ts`. Two new text styles in `global.css`: `.phrase-note` (DM Sans, 36ch) and `.phrase-stage` (small uppercase DM Sans, tracked).
+  - **One deviation from the approved table:** the stage's name ("01 · Terreno") closes each block, under the note, instead of heading it as an eyebrow. Both DESIGN.md ("There are no eyebrows, kickers or small caps above them") and the impeccable craft floor rule eyebrows out. The content is the same, and it now reads like the plan sheet's title.
+  - **Layout found in the captures:**
+    - The headline measure goes from 13ch to 16ch, so the longer headlines take two lines. The despiece keeps a 12ch measure (`.phrase-narrow`).
+    - `center-low` was positioned with `left: 50%` and a translate, which left the block only half the screen to wrap in (four lines at 375 px). It now uses `inset-inline`.
+    - A new `left-top` placement holds the líneas sentence across the top of the drawn plan.
+    - The cierre groups the note with the button.
+  - **Camera framing:** each scene makes room for the taller text blocks.
+    - Scene 1: the plot is lifted to `frameY` −0.18, and the preloader's point to −18vh to match.
+    - `PLAN_VIEW`: distance 45, `frameY` 0.12.
+    - Extrusion: distance 46, `frameX` 0.2, `frameY` −0.06.
+    - Materia: `frameY` 0.05.
+    - Luz: `frameX` 0.06, `frameY` 0.1.
+    - Despiece: `frameX` −0.03.
+    - Cierre: distance 84, `frameY` −0.03.
+    - Líneas and luz get sentence tweens (in at 0.62 and 0.3, out at 0.97 and 0.8), which hold through their rests at 0.95 and 0.66.
+  - **Captures:** headless Chrome over CDP on the production build, every rest at 1440×900 and 375×812, in `notes/textos-proceso/before-*` and `after-*`. There were three rounds plus one for the despiece alone. Each fix came from a capture: the scene-1 headline on the plot's edge, the líneas text over the plan, the materia note on the roof, the luz block on the blade, the extrusion headline on the board's corner, the despiece headline on the roof slab, and the cierre note on the plot. Reduced motion was captured at both sizes: the blocks sit flush left, and the closing note and button sit together.
+  - **Not verified:**
+    - The extrusion's east end is cropped at 1440 at its rest. It is the far end of a translucent volume mid-orbit; materia shows it whole.
+    - Real devices.
+    - Lighthouse was not re-run; the scene-1 headline is still the element painted under the preloader.
+  - **Docs:** README (intro, layer words, a new Deploy section), DESIGN.md (Note and Stage roles, measures, six placements, the named rule, layer copy), PRODUCT.md (principle on process copy) and `.impeccable/design.json`.
+  - **Checks:** test 76/76, check 0 errors, budget 198.6 KB gzip.
+  - **Risk:** item 6. Whether text clears the 3D is checked only by the captures, and the framing shifts move every scene from scene 1 to the closing.
