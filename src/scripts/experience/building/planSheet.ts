@@ -1,10 +1,11 @@
 import { CanvasTexture, Color, LinearMipmapLinearFilter, Mesh, PlaneGeometry, ShaderMaterial, type IUniform } from 'three';
-import { planDrawing, type Ink, type Plan, type PlanDrawing, type Point, type Rect, type Weight } from './plan';
+import { planDrawing, sheetBounds, type Ink, type PlanDrawing, type Point, type Rect, type SheetFrame, type SheetPlan, type Weight } from './plan';
 
 /*
  * The ground floor plan drafted on the plot at full size, the way a house
- * is set out on site before it is built. The drawing is painted once into a
- * canvas, each ink in its own channel (red: what the plan cuts, green: what
+ * is set out on site before it is built: the main house's, or another
+ * house's with fewer parts (see SheetPlan). The drawing is painted once into
+ * a canvas, each ink in its own channel (red: what the plan cuts, green: what
  * it sees, blue: the notes), so the shader can lay them down in the order a
  * drafter does: walls first, then the lines, then the lettering. `uDraw`
  * (0..1) is how far the drafting has got.
@@ -192,14 +193,12 @@ export function paintPlan(
   context.letterSpacing = '0px';
 }
 
-export function createPlanSheet(plan: Plan, site: { width: number; depth: number }, options: PlanSheetOptions): PlanSheet {
-  const scale = Math.min(options.pixelsPerMetre, options.maxSize / Math.max(site.width, site.depth));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(site.width * scale);
-  canvas.height = Math.round(site.depth * scale);
-  const context = canvas.getContext('2d')!;
-
-  const { offset } = options;
+/**
+ * The plot as a canvas at `scale` pixels per metre: its size, plan
+ * coordinates to pixels, and the frame the drawing is placed in. `offset`
+ * takes plan coordinates to the plot's, whose centre is its origin.
+ */
+export function sheetLayout(plan: SheetPlan, site: { width: number; depth: number }, offset: { x: number; z: number }, scale: number) {
   // Canvas left is the plot's west edge, canvas top its south (back) edge.
   const toCanvas = ([x, z]: Point): [number, number] => [
     (x + offset.x + site.width / 2) * scale,
@@ -208,12 +207,18 @@ export function createPlanSheet(plan: Plan, site: { width: number; depth: number
   const fromScene = (x: number, z: number): Point => [x - offset.x, z - offset.z];
   const [sx0, sz0] = fromScene(-site.width / 2, -site.depth / 2);
   const [sx1, sz1] = fromScene(site.width / 2, site.depth / 2);
-  const bounds: Rect = {
-    x: [Math.min(plan.blade.x[0], plan.ground.slab.x[0]), Math.max(plan.ground.slab.x[1], plan.upper.slab.x[1])],
-    z: [plan.ground.slab.z[0], plan.ground.slab.z[1]],
-  };
-  const drawing = planDrawing(plan, { bounds, sheet: { x: [sx0, sx1], z: [sz0, sz1] } });
-  paintPlan(context, drawing, toCanvas, scale, options.font);
+  const frame: SheetFrame = { bounds: sheetBounds(plan), sheet: { x: [sx0, sx1], z: [sz0, sz1] } };
+  return { width: Math.round(site.width * scale), height: Math.round(site.depth * scale), toCanvas, frame };
+}
+
+export function createPlanSheet(plan: SheetPlan, site: { width: number; depth: number }, options: PlanSheetOptions): PlanSheet {
+  const scale = Math.min(options.pixelsPerMetre, options.maxSize / Math.max(site.width, site.depth));
+  const layout = sheetLayout(plan, site, options.offset, scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = layout.width;
+  canvas.height = layout.height;
+  const context = canvas.getContext('2d')!;
+  paintPlan(context, planDrawing(plan, layout.frame), layout.toCanvas, scale, options.font);
 
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearMipmapLinearFilter;

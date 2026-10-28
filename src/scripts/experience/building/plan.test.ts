@@ -12,19 +12,106 @@ import {
   overlaps,
   planDrawing,
   runsAlongX,
+  sheetBounds,
+  sheetOffset,
   slice,
   stairGeometry,
   wallBlocks,
+  type Level,
   type LevelId,
   type Opening,
   type Plan,
+  type PlanDrawing,
   type Point,
   type Rect,
   type Room,
+  type SheetPlan,
   type Wall,
 } from './plan';
+import { planOffset } from './params';
 
 const LEVELS: LevelId[] = ['ground', 'upper'];
+
+/**
+ * A one-storey house with none of the main house's extras: no upper floor,
+ * no blade, no canopy, no galería, no terrace. Load-bearing concrete walls on
+ * the two axes each way, brick partitions, and nothing drawn above the cut
+ * (no high window, passage or stair), so any dashed line would be a part it
+ * does not have.
+ */
+const cottage: SheetPlan = {
+  heights: { slab: 0.3, structure: 0.2, ground: 3.2, door: 2.1 },
+  column: 0.3,
+  grid: {
+    x: [
+      { id: '1', at: 0.15 },
+      { id: '2', at: 11.85 },
+    ],
+    z: [
+      { id: 'A', at: 0.15 },
+      { id: 'B', at: 7.85 },
+    ],
+  },
+  ground: {
+    name: 'Planta',
+    slab: { x: [0, 12], z: [0, 8] },
+    walls: [
+      {
+        kind: 'concrete',
+        x: [0, 12],
+        z: [0, 0.3],
+        openings: [
+          { type: 'door', at: 2, width: 0.95, hinge: 'min', side: 1 },
+          { type: 'window', at: 4, width: 1.8, sill: 0.9, head: 2.1 },
+          { type: 'window', at: 7.6, width: 1.2, sill: 0.9, head: 2.1 },
+        ],
+      },
+      {
+        kind: 'concrete',
+        x: [0, 12],
+        z: [7.7, 8],
+        openings: [
+          { type: 'slider', at: 1, width: 4.2, leaves: 2 },
+          { type: 'window', at: 8.2, width: 2.4, sill: 0.9, head: 2.1 },
+        ],
+      },
+      { kind: 'concrete', x: [0, 0.3], z: [0.3, 7.7], openings: [{ type: 'window', at: 0.8, width: 1.6, sill: 0.9, head: 2.1 }] },
+      { kind: 'concrete', x: [11.7, 12], z: [0.3, 7.7], openings: [{ type: 'window', at: 1.6, width: 0.6, sill: 1, head: 2.1 }] },
+      {
+        kind: 'partition',
+        x: [6.85, 7],
+        z: [0.3, 7.7],
+        openings: [
+          { type: 'door', at: 1.2, width: 0.8, hinge: 'min', side: 1 },
+          { type: 'door', at: 4.4, width: 0.8, hinge: 'min', side: 1 },
+        ],
+      },
+      { kind: 'partition', x: [7, 11.7], z: [3.85, 4], openings: [{ type: 'door', at: 2.7, width: 0.7, hinge: 'min', side: -1 }] },
+      { kind: 'partition', x: [9.35, 9.5], z: [0.3, 3.85] },
+    ],
+    columns: [],
+    rooms: [
+      { name: 'Estar comedor', rect: { x: [0.3, 6.85], z: [0.3, 7.7] }, label: [3.6, 3], npt: true },
+      { name: 'Cocina', rect: { x: [7, 9.35], z: [0.3, 3.85] }, label: [8.4, 2.6] },
+      { name: 'Baño', rect: { x: [9.5, 11.7], z: [0.3, 3.85] }, label: [10.9, 2.6] },
+      { name: 'Dormitorio', rect: { x: [7, 11.7], z: [4, 7.7] }, label: [8.4, 6.6] },
+    ],
+    fixtures: [
+      { kind: 'sofa', rect: { x: [0.6, 1.5], z: [3.4, 5.6] }, facing: 'e' },
+      { kind: 'table', rect: { x: [3.6, 5.4], z: [5.6, 6.6] }, facing: 'n', seats: 2 },
+      { kind: 'counter', rect: { x: [7, 9.35], z: [0.3, 0.9] }, facing: 'n' },
+      { kind: 'sink', rect: { x: [7.9, 8.6], z: [0.38, 0.82] }, facing: 'n' },
+      { kind: 'cooktop', rect: { x: [8.75, 9.3], z: [0.35, 0.85] }, facing: 'n' },
+      { kind: 'basin', rect: { x: [9.7, 10.3], z: [0.3, 0.75] }, facing: 'n' },
+      { kind: 'shower', rect: { x: [10.8, 11.7], z: [0.3, 1.2] }, facing: 'n' },
+      { kind: 'wc', rect: { x: [9.5, 10.15], z: [1.45, 1.85] }, facing: 'e' },
+      { kind: 'wardrobe', rect: { x: [7.3, 9.3], z: [4, 4.6] }, facing: 'n' },
+      { kind: 'bed', rect: { x: [9.6, 11.7], z: [4.95, 6.55] }, facing: 'w' },
+    ],
+  },
+};
+/** The cottage centred on an 18 × 14 m plot. */
+const cottageFrame = { bounds: { x: [0, 12], z: [0, 8] }, sheet: { x: [-3, 15], z: [-3, 11] } } satisfies { bounds: Rect; sheet: Rect };
 const clearOf = (id: LevelId) => {
   const { floor, ceiling } = levelHeights(plan, id);
   return ceiling - floor;
@@ -255,6 +342,90 @@ describe('the drawn plan', () => {
     const corners = [[x[0], z[0]], [x[1], z[0]], [x[1], z[1]], [x[0], z[1]]];
     expect(drawing.strokes).toContainEqual(expect.objectContaining({ dash: 'dashed', points: corners }));
   });
+
+  it("still draws the main house's two sheets as they were before a plan could leave parts out", () => {
+    // Counted and lettered on the sheets as drawn before T18.
+    const before: Record<LevelId, { counts: Record<string, number>; first: string[]; last: string[] }> = {
+      ground: {
+        counts: { poche: 9, hatch: 6, strokes: 153, arcs: 6, solids: 2, circles: 15, labels: 49 },
+        first: ['SUBE', '1', '19', '19 alz. 17,6 / 18 pis. 28', 'PROYECCIÓN LOSA P. ALTA · POSTESADA e=0,28', 'MURO H° VISTO e 0,30 · h +7,15'],
+        last: ['GALERÍA', '55,44 m²', 'NPT −0,05', 'PLANTA BAJA', '0', '1', '2', '5', 'm', 'N'],
+      },
+      upper: {
+        counts: { poche: 9, hatch: 17, strokes: 142, arcs: 13, solids: 1, circles: 8, labels: 47 },
+        first: ['MURO H° VISTO e 0,30 · h +7,15', '1', '2', '3', '4', 'A', 'B'],
+        last: ['VEST.', '4,72 m²', 'PLANTA ALTA', '0', '1', '2', '5', 'm', 'N'],
+      },
+    };
+    const strings = ['4,50', '5,10', '5,10', '6,75', '15,00', '6,60', '21,60', '8,10', '8,40', '1,80', '10,20', '1,50', '10,20', '1,50'];
+    for (const id of LEVELS) {
+      const sheet = planDrawing(plan, frame, id);
+      const counts = Object.fromEntries(Object.entries(sheet).map(([key, items]) => [key, items.length]));
+      expect(counts, id).toEqual(before[id].counts);
+      const texts = sheet.labels.map((label) => label.text);
+      expect(texts.slice(0, before[id].first.length), id).toEqual(before[id].first);
+      expect(texts.slice(-before[id].last.length), id).toEqual(before[id].last);
+      // Every dimension string, in the order they are drawn: axes, the bar and its cantilever, overall, the blade.
+      expect(texts.filter((text) => /^\d+,\d\d$/.test(text)), id).toEqual(strings);
+    }
+  });
+});
+
+describe('the sheet of a house without the main house’s extras', () => {
+  const texts = () => planDrawing(cottage, cottageFrame).labels.map((label) => label.text);
+
+  it('draws a one-storey house with no blade, canopy, galería or terrace', () => {
+    expect(() => planDrawing(cottage, cottageFrame)).not.toThrow();
+    expect(texts()).toEqual(expect.arrayContaining(['ESTAR COMEDOR', 'COCINA', 'BAÑO', 'DORMITORIO', 'NPT ±0,00', 'PLANTA']));
+  });
+
+  it('cuts only its own walls: no blade in the poché', () => {
+    const drawing = planDrawing(cottage, cottageFrame);
+    const { floor, ceiling } = levelHeights(cottage, 'ground');
+    const cut = (kind: Wall['kind']) => cottage.ground.walls.filter((wall) => wall.kind === kind).flatMap((wall) => cutPieces(wall, cottage, ceiling - floor));
+    expect(drawing.poche).toEqual(cut('concrete'));
+    expect(drawing.hatch).toEqual(cut('partition'));
+  });
+
+  it('draws nothing of the parts it does not have', () => {
+    const drawing = planDrawing(cottage, cottageFrame);
+    // No upper slab or canopy in projection: nothing in this plan is dashed.
+    expect(drawing.strokes.filter((stroke) => stroke.dash === 'dashed')).toEqual([]);
+    // No galería paving: the only outline seen below the cut is the slab's edge.
+    const outlines = drawing.strokes.filter((stroke) => stroke.ink === 'line' && stroke.weight === 'beyond' && stroke.closed);
+    expect(outlines.map((stroke) => stroke.points)).toEqual([[[0, 0], [12, 0], [12, 8], [0, 8]]]);
+    // No notes for the slab above or the blade, and no blade string west of the house.
+    expect(texts().filter((text) => /PROYECCIÓN|MURO/.test(text))).toEqual([]);
+    expect(drawing.labels.filter((label) => label.quarter && label.at[0] < cottage.ground.slab.x[0])).toEqual([]);
+  });
+
+  it('dimensions the axes and the whole house, without a face-to-face string that would only repeat the overall', () => {
+    const all = texts();
+    expect(all.filter((text) => text === '12,00')).toHaveLength(1);
+    expect(all.filter((text) => text === '8,00')).toHaveLength(1);
+    expect(all).toEqual(expect.arrayContaining(['11,70', '7,70']));
+  });
+
+  it('refuses to draw an upper floor the house does not have', () => {
+    expect(() => planDrawing(cottage, cottageFrame, 'upper')).toThrow(/no upper floor/);
+  });
+});
+
+describe('the frame of a sheet', () => {
+  it("bounds the main house as before: the blade's west face to the cantilever, the ground floor north to south", () => {
+    expect(sheetBounds(plan)).toEqual({ x: [0, 21.6], z: [0, 10.2] });
+  });
+
+  it('bounds a house by the parts it has', () => {
+    expect(sheetBounds(cottage)).toEqual(cottage.ground.slab);
+    const porch: Rect = { x: [12, 15], z: [2, 6] };
+    expect(sheetBounds({ ...cottage, galeria: porch })).toEqual({ x: [0, 15], z: [0, 8] });
+  });
+
+  it("centres the main house's sheet on its plot where the site does", () => {
+    expect(sheetOffset(plan)).toEqual(planOffset(plan));
+    expect(sheetOffset(cottage)).toEqual({ x: -6, z: -4 });
+  });
 });
 
 describe('the lettering of each plan', () => {
@@ -277,17 +448,23 @@ describe('the lettering of each plan', () => {
     return overlaps(rect, square) && Math.hypot(nearest[0], nearest[1]) < radius;
   };
 
-  for (const id of LEVELS) {
-    const level = plan[id];
-    const drawing = planDrawing(plan, frame, id);
-    const roomTexts = (room: Room) => {
+  // The main house's two floors, and a one-storey house drawn on its own plot. Each sheet is drawn
+  // inside its tests, so a plan that cannot be drawn fails them instead of the whole file.
+  const sheets: { name: string; level: Level; draw: () => PlanDrawing }[] = [
+    ...LEVELS.map((id) => ({ name: id, level: plan[id], draw: () => planDrawing(plan, frame, id) })),
+    { name: 'one-storey', level: cottage.ground, draw: () => planDrawing(cottage, cottageFrame) },
+  ];
+
+  for (const { name: id, level, draw } of sheets) {
+    const roomTexts = (drawing: PlanDrawing, room: Room) => {
       const [x, z] = room.label ?? [(room.rect.x[0] + room.rect.x[1]) / 2, (room.rect.z[0] + room.rect.z[1]) / 2];
       return drawing.labels.filter((label) => label.at[0] === x && label.at[1] > z - 0.2 && label.at[1] < z + 0.6);
     };
 
     it(`letters every room of the ${id} plan inside its walls, clear of its fittings and door swings`, () => {
+      const drawing = draw();
       for (const room of level.rooms) {
-        const texts = roomTexts(room);
+        const texts = roomTexts(drawing, room);
         expect(texts.length, room.name).toBeGreaterThanOrEqual(1);
         for (const label of texts) {
           const box = labelBox(label);
@@ -303,7 +480,7 @@ describe('the lettering of each plan', () => {
     });
 
     it(`never letters one note over another on the ${id} plan`, () => {
-      const boxes = drawing.labels.map((label) => ({ label, box: labelBox(label) }));
+      const boxes = draw().labels.map((label) => ({ label, box: labelBox(label) }));
       for (let i = 0; i < boxes.length; i++) {
         for (let j = i + 1; j < boxes.length; j++) {
           expect(overlaps(boxes[i].box, boxes[j].box), `${boxes[i].label.text} / ${boxes[j].label.text}`).toBe(false);

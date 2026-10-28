@@ -66,7 +66,7 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T15 Carport and grill under the cantilever | S26 | inline | discarded (user decision) | tried uncommitted and shown, see L42; restored to `4614553` |
 | T16 East glass set back 0.90 m | S26 | inline | done | `4614553`, see L40; test 76/76 (RED observed first), check 0 errors, budget 198.5 KB |
 | T17 Process copy: stages, layer glosses, closing, title; README deploy section | S27 | inline (copy proposed by one marketing reviewer sub-agent, read-only) | done | `2f6078d` (copy), `7e790f1` (deploy docs), see L48; test 76/76, check 0 errors, budget 198.6 KB; no unit RED (copy, CSS and camera framing), checked in captures |
-| T18 Plan sheets for any house: optional upper floor, blade, canopy, galería and terrace in the drawing; a dev-only sheet viewer | S28 | delegated writer (Writer trigger: parallel with T20 on disjoint files; parent context near the backstop) | in progress | branch `feat/otros-proyectos` |
+| T18 Plan sheets for any house: optional upper floor, blade, canopy, galería and terrace in the drawing; a dev-only sheet viewer | S28 | delegated writer (Writer trigger: parallel with T20 on disjoint files; parent context near the backstop) | done | see L50 |
 | T19 Three project plans, each grounded on a published modern house and audited by the architect reviewer | S28 | three parallel delegated writers, one file each (`src/config/projects/<id>.ts`), after T18 | pending | |
 | T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | in progress | branch `feat/otros-proyectos` |
 
@@ -157,3 +157,17 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
   - **Before merging:** the PR's only check, "Workers Builds: web-arquitectura", had failed. It started and completed in the same second (17:33:42Z). Its output carries no log, and the built-in browser has no Cloudflare session, so the log was not read. `pnpm verify` is green locally and `main` had no build to compare, so the failure points at the Cloudflare setup rather than the code. It is reported to the user, not fixed here.
   - **Merge:** PR 1 merged with a merge commit, `43f8979`, which keeps the work-unit commits.
   - **PR 2:** `feat/otros-proyectos` is cut from `main` at `43f8979`. T18 and T20 run as parallel writers on disjoint files, the parent owning git; T19 follows T18.
+- **L50 (2026-10-28, T18 evidence):**
+  - **Change:** `plan.ts` exports `SheetPlan`. In it, `upper`, `blade`, `canopy`, `galeria`, `terrace`, `heights.upper` and `heights.parapet` are optional, and `Plan` stays the main house's full type, assignable to it. The file also exports `sheetBounds` and `sheetOffset`.
+  - **Drawing:** `planDrawing`, `paintPlan` and `createPlanSheet` take `SheetPlan` and leave out each absent part with its notes and dimension strings. `createPlanSheet` keeps its signature. `planSheet.ts` exports `sheetLayout`.
+  - **Viewer:** a dev-only viewer at `/dev/<id>` (`src/pages/dev/`). `getStaticPaths` returns `[]` outside dev. The client code loads as an inline module, because a processed script would be bundled into `dist/_astro` even with no page emitted.
+  - **RED:** 10 tests failed before the fix (`Cannot read properties of undefined (reading 'x')`, `sheetBounds is not a function`).
+  - **GREEN:** one-storey fixture `cottage`, 8 new tests, and a pin of the main house's counts, labels and strings. The main house's full-drawing fingerprint is the same before and after (`951bd2c2`, `ce7d3559`).
+  - **Checks:**
+    - Writer: test 99/99, check 0 errors, build with no `/dev` in `dist`.
+    - Parent spot check: `plan.test.ts` 37/37.
+  - **For T19:**
+    - `Project.plan` is typed `SheetPlan`.
+    - Project sheets are placed with `sheetOffset`.
+    - The viewer showed a short "0,15" span where the last axis sits on the east wall. This is a drawing rule that already applies to the main house, so it is left as is.
+  - **Risk:** item 3. It changes shared drawing code the main house uses. Covered by the fingerprint and the pinned test.
