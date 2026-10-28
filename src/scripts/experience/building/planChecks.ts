@@ -262,8 +262,11 @@ export function coveredArea(plan: SheetPlan): number {
     const level = levelOf(plan, id);
     const floor = floorOf(level);
     const voids = (level.voids ?? []).flatMap((well) => floor.map((piece) => clip(well, piece)).filter((piece): piece is Rect => piece !== null));
-    const semicovered = level.rooms.filter((room) => room.semicovered).reduce((half, room) => half + area(room.rect) / 2, 0);
-    return sum + unionArea(floor) - unionArea(voids) + semicovered;
+    // A semicovered room counts at half wherever it stands: what of it lies on the floor comes off the enclosed area.
+    const open = level.rooms.filter((room) => room.semicovered);
+    const onFloor = open.flatMap((room) => floor.map((piece) => clip(room.rect, piece)).filter((piece): piece is Rect => piece !== null));
+    const semicovered = open.reduce((half, room) => half + area(room.rect) / 2, 0);
+    return sum + unionArea(floor) - unionArea(voids) - unionArea(onFloor) + semicovered;
   }, 0);
 }
 

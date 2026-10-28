@@ -21,6 +21,7 @@ import {
   type PlanDrawing,
   type Point,
   type Rect,
+  type Room,
   type Segment,
   type SheetPlan,
   type Wall,
@@ -496,6 +497,12 @@ describe('the rules a plan must pass, when it breaks them', () => {
   it('measures a footprint by its union, less nothing for a floor without voids', () => {
     expect(coveredArea(lShaped)).toBeCloseTo(12 * 4 + 7 * 4, 10);
     expect(coveredArea(cottage)).toBeCloseTo(96, 10);
+  });
+
+  it('counts a semicovered room on the floor once, at half', () => {
+    const porch = { name: 'Porche', rect: { x: [0, 2], z: [4, 8] }, semicovered: true } satisfies Room;
+    const withPorch: SheetPlan = { ...cottage, ground: { ...cottage.ground, rooms: [...cottage.ground.rooms, porch] } };
+    expect(coveredArea(withPorch)).toBeCloseTo(96 - 8 + 8 / 2, 10);
   });
 
   it('finds a stated area more than 10% off the plan', () => {
