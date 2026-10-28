@@ -1,7 +1,7 @@
 # Feature: Del trazo al volumen — scroll-built 3D site for architects
 
 Objective: build the full 8-scene one-page site described in the brief "Del trazo al volumen" (Oct 28, 2026).
-Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (github.com/FedeRacun/web-arquitectura, L45); from S27 on, one branch per piece with a PR against `main` (`feat/textos-proceso` S27, `feat/otros-proyectos` S28) · Delivery: work-unit commits on the branch; pushing a branch, opening or merging a PR and deploying (Cloudflare Workers Builds) are the user's call · Test runner: Vitest (pure modules) + `astro check` + `astro build` + JS budget script + browser inspection.
+Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (github.com/FedeRacun/web-arquitectura, L45); from S27 on, one branch per piece with a PR against `main` (`feat/textos-proceso` S27, `feat/otros-proyectos` S28, `feat/maquetas-proyectos` S29) · Delivery: work-unit commits on the branch; pushing a branch, opening or merging a PR and deploying (Cloudflare Workers Builds) are the user's call · Test runner: Vitest (pure modules) + `astro check` + `astro build` + JS budget script + browser inspection.
 
 ## Specs
 
@@ -44,6 +44,7 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
   - Defaults the user may change on review (flagged by the reviewer): "¿Empezamos con una charla?" for visitors without a plot; "yo" for an architect working alone; the claimed practices ("calculamos", "probamos con agua", "tramitamos el final de obra") are per-architect copy.
   Amends the brief's phrases in S3, S5, S6, S9 and S10, and S24's layer roles. The scene-1 headline stays the element painted under the preloader (S23).
 - **S28 Other projects, one slide to the side (L44, L47).** "El sitio deberia poder llevar a otros proyectos del arquitecto. Se me ocurre que en alguno de los pasos del scroll muestre algo como "conocer mas proyectos" y que dentro del sitio se "desplace" a otro sector, a la derecha por ejemplo, dejando fuera de la vista el plano del edificio principal y abriendo lugar a toda una lista de planos" Approved design (L47): in the mesa scene a "Ver otros proyectos →" button pauses the guided scroll, the camera rises over the table and slides right, the model leaves the frame, and a row of three plans of other houses is drafted on the table with the main plan's ink sweep, under "Otras casas, otros terrenos." and "← Volver a la casa". Each plan: "Casa [nombre] · [localidad] · [m²] m²" and a status (Construida, En obra, Proyecto). A click brings the camera over that plan until it reads whole; arrows move between plans; Escape or "Volver" go back to the list, then to the house, with the scroll where it was and the focus on the button. Mobile: one plan per screen. Reduced motion: a crossfade. No WebGL: a real HTML list. Data in `src/config/projects.ts`; three houses of different typologies, each grounded on a published modern plan (cited, not traced) and audited by the architect reviewer, as S25. Branch `feat/otros-proyectos`, after S27's PR is merged.
+- **S29 Each other project's model rises when its plan is in focus (L55).** "Podemos armar la maqueta 3D de los otros proyectos?" Chosen option (L55), verbatim: "Sube sola al enfocar" — "Al enfocar un plano, la maqueta sube sola y la cámara gira a 3/4; al volver a la lista se baja. Hay un control menos, pero el plano ya no se lee de frente en el foco." Each house is raised from the same plan its sheet draws, as the main house is (S25): its floors follow the footprint, a patio stays open to the sky, the balsa of the mesa's model (S9). Only the house in focus stands; stepping to another plan lowers one and raises the next; back to the list lowers it. Reduced motion: the model stands at the crossfade's cut, with no rise. Amends S28's focus ("a click brings the camera over that plan until it reads whole"): in focus the camera now looks at the model in 3/4. Branch `feat/maquetas-proyectos`, after PR 2 is merged.
 
 ## Tasks
 
@@ -69,6 +70,8 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T18 Plan sheets for any house: optional upper floor, blade, canopy, galería and terrace in the drawing; a dev-only sheet viewer | S28 | delegated writer (Writer trigger: parallel with T20 on disjoint files; parent context near the backstop) | done | see L50 |
 | T19 Three project plans, each grounded on a published modern house and audited by the architect reviewer | S28 | three parallel delegated writers, one file each (`src/config/projects/<id>.ts`), after T18 | done | see L53 |
 | T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | done | see L51 |
+| T21 Any house raised from its plan: one storey, footprints, patios open to the sky, optional blade, canopy, galería and terrace | S29 | inline | done | `e9c162c`, see L56; test 159/159 (RED observed first), check 0 errors; main house pinned box for box |
+| T22 A balsa model of each house on its sheet, raised in focus, with the camera in 3/4 | S29 | inline (T21 first: same files' consumer) | done | `16f26b1`, fix `15022ef`, see L56-L57; test 161/161 (RED observed first), check 0 errors, budget 207.3 KB; verifier: 1 blocker fixed and rechecked |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
 
@@ -254,3 +257,52 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
     - House C's galería lets little winter sun into the living room; ending it at axis 3 is the massing alternative.
     - In focus mode the next sheet and its label peek in at the right edge.
   - **Not verified:** 60 fps on a real device with the row open; screen readers.
+- **L54 (2026-10-28, PR 2):**
+  - The user asked: "Arma PR". The branch was 3,534+/227− lines over 27 files, so they were asked how to split it. They chose, verbatim: "Un PR, size:exception (Recomendado)".
+  - PR 2 was opened as https://github.com/FedeRacun/web-arquitectura/pull/2, to be reviewed commit by commit. Its one check, Workers Builds, failed in 0 s, as on PR 1. The log is only on the Cloudflare dashboard. `pnpm verify` passes locally.
+  - The user then said, verbatim: "Después lo reviso, mergealo". PR 2 was merged as `9e6f2e4`, a merge commit like PR 1, with the build check still failing. The branch was kept.
+- **L55 (2026-10-28, S29):**
+  - The user asked, verbatim: "Podemos armar la maqueta 3D de los otros proyectos?"
+  - Finding: `deriveBuilding` (params.ts) builds only the main house's typology. It needs an upper floor, a blade, a galería and a terrace, and it raises the slab rect, not the footprint (`Level.footprint` says "Drawn only"). The 3D must be generalised the way T18 generalised the sheet.
+  - Asked how the model shows. The options were: a button in focus (recommended), it rises by itself on focus, or one beside each plan. The user chose "Sube sola al enfocar" (S29).
+  - Plan:
+    - T21: `deriveModel(plan: SheetPlan, …)` for any house. `deriveBuilding` keeps the main house's boxes bit for bit, pinned by a fingerprint of its parts taken before the change.
+    - T22: models built lazily on the first focus, in balsa with no shadows (the sun's shadow frustum covers only the main plot), raised with the extrusion's `uGrow`. The camera frames the board and the risen model in 3/4.
+- **L56 (2026-10-28, T21 and T22 evidence):**
+  - **T21 `e9c162c`:** `deriveModel(plan: SheetPlan, detail, offset, eave = 0)` raises any house, and `deriveBuilding` now wraps it for the main house with `EAVE`.
+    - Floors and roofs follow `footprint`, cut into disjoint pieces so no two slabs share a face.
+    - A ground void is a patio open to the sky through every slab and the roof; a stair well is roofed.
+    - With an upper floor and no terrace, the ground floor it leaves uncovered is roofed level with it.
+    - The blade, canopy, galería, terrace and upper floor are built only where the plan has them. `wallBlocks` takes a `SheetPlan`.
+    - **Pin:** before the change the main house's parts were fingerprinted, [166, `9c0ba64f`, 155, `b43820d9`] for full and low detail. They are identical after it.
+    - **RED:** `deriveModel is not a function`.
+    - **GREEN:** 8 tests over the three houses: on the sheet, height, slab on footprint, courtyard open, patio open and stair well roofed, street band roofed, blade, walls cut where the plan cuts them. The blade test now compares boxes by value, since the part and the volume are no longer one object.
+  - **T22 `16f26b1`:**
+    - Each house is derived as numbers at boot, so the framing knows its height. Its meshes are built on the first focus with `createMassing`, using their own uniforms (`uWave` 3, `uModel` 1). `uGrow` is the extrusion.
+    - The rise is 2.4 s after 0.9 s, the sink 0.8 s, the other plans' fade 0.9 s. In focus, `FOCUS_VIEW` is azimuth 0.45 and elevation 0.62, and `frameBox` frames the board and the risen model.
+    - The lamp already follows the camera's target, so the model is lit over its sheet.
+    - The labels hang under the sheet's lowest corner. That is unchanged in the list, where the near corners are the lowest.
+    - In focus the other labels fade but stay in the tab order. Back in the list after a focus (`data-seen`), they return with their sheets instead of after the ink.
+    - **RED:** 5 tests, on the row's heights, the 3/4 focus framing on desktop and portrait, focus being lower than the list, and `standing`.
+    - **Checks:** `pnpm verify` test 160/160, check 0, no `/dev` pages, budget 207.3 KB gzip (from 206.5).
+    - **Captures** (headless Chrome on the production build, `scratchpad/t22/`): rising, each of the three in focus, back to the list, at 1440 and 375, and reduced motion at 1440.
+  - **Risk:**
+    - T21, item 3: shared derivation code for the main house, pinned by the fingerprint.
+    - T22, item 4: rise, sink and fade tweens ordered against the camera glide and the reduced-motion cuts. An independent verifier was launched on `e9c162c..16f26b1`.
+- **L57 (2026-10-28, T22 verifier and correction):**
+  - **Verdict:** every S29 item passes: the 3/4 focus, stepping, the way back, reduced motion, and the main house unchanged, hashed field by field against the baseline. Rapid stepping, Escape mid-rise, Tab, 375×812 and the console are clean. Test 160/160, check 0.
+  - **Blocker B1:** faded plans could still be picked. `sheetAt` ray-tested every board, so at 1440 a click on empty table at (1368,540) focused plan 2, and hovering there showed the target cursor.
+  - **Advisories:**
+    - A1: under reduced motion, a double Escape inside the veil's 0.45 s rise sank the model before the veil covered it.
+    - A2: a plan stepped to in focus kept its label at opacity 0 for about 2.6 s, though it held keyboard focus.
+    - A3: the models cast shadows where the L55 plan said none.
+  - **Correction `15022ef`:**
+    - A pure `present(nav, index)` decides both the fade and what `sheetAt` can pick.
+    - Under reduced motion, `close()` arranges inside the cut.
+    - The current item in focus fades in after 0.3 s instead of 2.6 s.
+    - A3 is kept: shadows are already off on mobile, and the sun's frustum does not reach the row.
+    - **RED:** `present is not a function`. **GREEN:** test 161/161, check 0, budget 207.3 KB.
+  - **Recheck** (the verifier's own probes, on the rebuilt production build):
+    - Picking: 25 points at 1440 now give no change, against 2 before. Hover only finds the plan in focus, and a click on the faded label 0 leaves the count at 2.
+    - The label stepped to is at opacity 0.97 after 0.8 s.
+    - Escape mid-rise and the reduced-motion double Escape behave as before. The scroll resumes, and a wheel step moves it from 7704 to 8820.
