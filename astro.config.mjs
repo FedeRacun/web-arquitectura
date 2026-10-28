@@ -31,6 +31,8 @@ export default defineConfig({
       fallbacks: ['sans-serif'],
     },
   ],
+  // The toolbar overlays the scene in `astro dev`; production builds never ship it.
+  devToolbar: { enabled: false },
   build: {
     // One small stylesheet: inlining it saves a render-blocking round trip.
     inlineStylesheets: 'always',
