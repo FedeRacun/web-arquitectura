@@ -1,13 +1,30 @@
+import {
+  levelHeights,
+  openingHeights,
+  openingSpan,
+  runsAlongX,
+  wallBlocks,
+  doorSwing,
+  type LevelId,
+  type Opening,
+  type Plan,
+  type Rect,
+  type Wall,
+} from './plan';
+
 /*
  * The procedural building as plain numbers: boxes tagged with their exploded
  * layer and their material, the three volumes it is composed of, and the
  * edges the sketch draws. No three.js here, so the composition can be tested
  * and re-proportioned per architect from the config alone.
  *
- * Axes: x along the site's width, y up, z towards the viewer (the front).
- * The composition: a glazed ground floor (base), an upper bar shifted along x
- * so it cantilevers past the base, and a free-standing concrete blade wall on
- * the left that rises above both.
+ * Every wall, opening, column and slab is raised from the floor plan
+ * (src/config/plan.ts), so the extrusion builds exactly what the plan draws.
+ *
+ * Axes: x along the site's width, y up, z towards the viewer (the front,
+ * which is north: the garden). The composition: a glazed ground floor (base),
+ * an upper bar that cantilevers past it over the galería, and a
+ * free-standing concrete blade wall on the west that rises above both.
  */
 
 export const LAYERS = ['estructura', 'envolvente', 'luz', 'habitar'] as const;
@@ -34,9 +51,7 @@ export interface SketchLine {
 
 export interface BuildingConfig {
   site: { width: number; depth: number };
-  base: { width: number; depth: number; height: number };
-  upper: { width: number; depth: number; height: number; shift: number };
-  blade: { height: number; thickness: number };
+  plan: Plan;
 }
 
 export interface Building {
@@ -50,23 +65,28 @@ export interface Building {
 
 export type Detail = 'full' | 'low';
 
-const SLAB = 0.25;
-const WALL = 0.3;
 const GLASS = 0.06;
 const FRAME = 0.08;
 const FRAME_DEPTH = 0.14;
-/** The ground floor glazing sits this far behind the base's front edge. */
-const RECESS = 0.6;
-/** Gap between the blade wall and the base. */
-const BLADE_GAP = 1.2;
-/** Sill height of the upper bar's ribbon window. */
-const SILL = 1;
-const LINTEL = 0.65;
+const LEAF = 0.045;
+const RAIL = 1.0;
+/** The terrace's deck and gravel bed. */
+const DECK = 0.06;
+/** The roof slab overhangs the upper bar by this much. */
+const EAVE = 0.15;
 
 const box = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Box => ({
   min: [x0, y0, z0],
   max: [x1, y1, z1],
 });
+
+/** Plan coordinates to the scene's: the house centred on the site along x, the ground floor centred along z. */
+export function planOffset(plan: Plan): { x: number; z: number } {
+  const { ground, upper } = plan;
+  const west = Math.min(ground.slab.x[0], upper.slab.x[0]);
+  const east = Math.max(ground.slab.x[1], upper.slab.x[1]);
+  return { x: -(west + east) / 2, z: -(ground.slab.z[0] + ground.slab.z[1]) / 2 };
+}
 
 /** Positions from `from` to `to` (exclusive of both ends), about `step` apart. */
 function divisions(from: number, to: number, step: number): number[] {
@@ -84,6 +104,31 @@ function union(boxes: Box[]): Box {
     }
   }
   return { min, max };
+}
+
+/** The rect minus a hole, as up to four strips around it. */
+function subtract(rect: Rect, hole: Rect): Rect[] {
+  const x0 = Math.max(rect.x[0], hole.x[0]);
+  const x1 = Math.min(rect.x[1], hole.x[1]);
+  const z0 = Math.max(rect.z[0], hole.z[0]);
+  const z1 = Math.min(rect.z[1], hole.z[1]);
+  if (x0 >= x1 || z0 >= z1) return [rect];
+  const strips: Rect[] = [
+    { x: rect.x, z: [rect.z[0], z0] },
+    { x: rect.x, z: [z1, rect.z[1]] },
+    { x: [rect.x[0], x0], z: [z0, z1] },
+    { x: [x1, rect.x[1]], z: [z0, z1] },
+  ];
+  return strips.filter((strip) => strip.x[1] - strip.x[0] > 1e-6 && strip.z[1] - strip.z[0] > 1e-6);
+}
+
+const subtractAll = (rects: Rect[], holes: readonly Rect[]) => holes.reduce((pieces, hole) => pieces.flatMap((piece) => subtract(piece, hole)), rects);
+
+/** Where two rects overlap; none when they only touch. */
+function intersect(a: Rect, b: Rect): Rect[] {
+  const x: [number, number] = [Math.max(a.x[0], b.x[0]), Math.min(a.x[1], b.x[1])];
+  const z: [number, number] = [Math.max(a.z[0], b.z[0]), Math.min(a.z[1], b.z[1])];
+  return x[1] - x[0] > 1e-6 && z[1] - z[0] > 1e-6 ? [{ x, z }] : [];
 }
 
 function boxEdges(b: Box): SketchLine[] {
@@ -106,87 +151,103 @@ function boxEdges(b: Box): SketchLine[] {
 }
 
 export function deriveBuilding(config: BuildingConfig, detail: Detail): Building {
-  const { base, upper, blade } = config;
-  const span = Math.max(base.width, upper.shift + upper.width);
-  const x0 = -span / 2;
-
-  const baseBox = box(x0, x0 + base.width, 0, base.height, -base.depth / 2, base.depth / 2);
-  const top = base.height + upper.height;
-  const upperBox = box(
-    x0 + upper.shift,
-    x0 + upper.shift + upper.width,
-    base.height,
-    top,
-    -base.depth / 2,
-    -base.depth / 2 + upper.depth,
-  );
-  const bladeX1 = x0 - BLADE_GAP;
-  const bladeBox = box(bladeX1 - blade.thickness, bladeX1, 0, blade.height, -base.depth / 2 - 1.5, base.depth / 2 + 1.5);
-
-  const [ax0, , az0] = baseBox.min;
-  const [ax1, ah, az1] = baseBox.max;
-  const [bx0, by0, bz0] = upperBox.min;
-  const [bx1, , bz1] = upperBox.max;
+  const { plan } = config;
+  const { slab, ground: groundHeight, upper: upperHeight, parapet } = plan.heights;
+  const offset = planOffset(plan);
+  const top = groundHeight + upperHeight;
+  const at = (rect: Rect, y0: number, y1: number): Box =>
+    box(rect.x[0] + offset.x, rect.x[1] + offset.x, y0, y1, rect.z[0] + offset.z, rect.z[1] + offset.z);
 
   const parts: Part[] = [];
   const add = (layer: LayerId, kind: MaterialKind, b: Box) => parts.push({ layer, kind, box: b });
 
-  // Estructura: slabs and the columns behind the ground floor glass.
-  add('estructura', 'concrete', box(ax0, ax1, 0, SLAB, az0, az1));
-  add('estructura', 'concrete', box(ax0, ax1, ah - SLAB, ah, az0, az1));
-  if (bx1 > ax1) add('estructura', 'concrete', box(ax1, bx1, ah - SLAB, ah, bz0, bz1));
-  const columnZ = az1 - RECESS - 0.6;
-  for (const x of divisions(ax0, ax1, detail === 'full' ? 3 : 6)) {
-    add('estructura', 'concrete', box(x - 0.125, x + 0.125, SLAB, ah - SLAB, columnZ - 0.125, columnZ + 0.125));
+  const baseBox = at(plan.ground.slab, 0, groundHeight);
+  const upperBox = at(plan.upper.slab, groundHeight, top);
+  const bladeBox = at(plan.blade, 0, plan.blade.height);
+
+  // Estructura: the slabs (the upper one open over the stair), the galería's paving, the columns.
+  add('estructura', 'concrete', at(plan.ground.slab, 0, slab));
+  add('estructura', 'concrete', at(plan.galeria, 0, slab - 0.05));
+  const upperFloor = [...subtract(plan.upper.slab, plan.ground.slab), ...intersect(plan.upper.slab, plan.ground.slab)];
+  for (const piece of subtractAll(upperFloor, plan.upper.voids ?? [])) add('estructura', 'concrete', at(piece, groundHeight - slab, groundHeight));
+  // Under the terrace the same slab, its top a step lower, under the deck.
+  const terraceFloor = groundHeight - plan.terrace.drop;
+  for (const piece of subtract(plan.ground.slab, plan.upper.slab)) add('estructura', 'concrete', at(piece, groundHeight - slab, terraceFloor - DECK));
+  const half = plan.column / 2;
+  const groundLevel = levelHeights(plan, 'ground');
+  for (const [x, z] of plan.ground.columns) {
+    add('estructura', 'concrete', at({ x: [x - half, x + half], z: [z - half, z + half] }, groundLevel.floor, groundLevel.ceiling));
   }
 
-  // Envolvente: the concrete walls and the blade.
-  const lintelBottom = top - SLAB - LINTEL;
-  add('envolvente', 'concrete', box(ax0, ax1, SLAB, ah - SLAB, az0, az0 + WALL));
-  add('envolvente', 'concrete', box(ax0, ax0 + WALL, SLAB, ah - SLAB, az0 + WALL, az1));
-  add('envolvente', 'concrete', box(ax1 - WALL, ax1, SLAB, ah - SLAB, az0 + WALL, az1));
-  add('envolvente', 'concrete', box(bx0, bx1, by0, top - SLAB, bz0, bz0 + WALL));
-  add('envolvente', 'concrete', box(bx0, bx0 + WALL, by0, top - SLAB, bz0 + WALL, bz1));
-  add('envolvente', 'concrete', box(bx0 + WALL, bx1, by0, by0 + SILL, bz1 - WALL, bz1));
-  add('envolvente', 'concrete', box(bx0 + WALL, bx1, lintelBottom, top - SLAB, bz1 - WALL, bz1));
-  add('envolvente', 'concrete', box(bx0 + WALL, bx0 + 1.2, by0 + SILL, lintelBottom, bz1 - WALL, bz1));
-  add('envolvente', 'concrete', box(bx1 - 0.9, bx1, by0 + SILL, lintelBottom, bz1 - WALL, bz1));
+  // Envolvente: every wall of both plans, with the sills and lintels around its openings; the blade.
+  // Luz: the glass and the wooden frames and door leaves in those openings, and the stair's glass rail.
+  for (const id of ['ground', 'upper'] as const satisfies readonly LevelId[]) {
+    const { floor, ceiling } = levelHeights(plan, id);
+    const clear = ceiling - floor;
+    for (const wall of plan[id].walls) {
+      for (const block of wallBlocks(wall, plan, clear)) add('envolvente', 'concrete', at(block.rect, floor + block.y[0], floor + block.y[1]));
+      for (const opening of wall.openings ?? []) carpentry(wall, opening, floor, clear);
+    }
+    for (const rail of plan[id].rails ?? []) add('luz', 'glass', at(rail, floor, floor + RAIL));
+  }
   add('envolvente', 'concrete', bladeBox);
 
-  // Luz: carpentry in wood and the glass it holds.
-  const glazingZ = az1 - RECESS;
-  add('luz', 'glass', box(ax0 + WALL, ax1 - WALL, SLAB, ah - SLAB, glazingZ - GLASS / 2, glazingZ + GLASS / 2));
-  const frameZ = (z: number): [number, number] => [z - FRAME_DEPTH / 2, z + FRAME_DEPTH / 2];
-  for (const x of divisions(ax0 + WALL, ax1 - WALL, detail === 'full' ? 1.5 : 3)) {
-    add('luz', 'wood', box(x - FRAME / 2, x + FRAME / 2, SLAB, ah - SLAB, ...frameZ(glazingZ)));
-  }
-  add('luz', 'wood', box(ax0 + WALL, ax1 - WALL, ah - SLAB - 0.12, ah - SLAB, ...frameZ(glazingZ)));
-  add('luz', 'wood', box(ax0 + WALL, ax1 - WALL, SLAB, SLAB + 0.08, ...frameZ(glazingZ)));
+  /** Glass, frames and leaves for one opening. */
+  function carpentry(wall: Wall, opening: Opening, floor: number, clear: number) {
+    const alongX = runsAlongX(wall);
+    const [a, b] = openingSpan(wall, opening);
+    const across = alongX ? wall.z : wall.x;
+    const mid = (across[0] + across[1]) / 2;
+    const [bottom, top] = openingHeights(opening, plan, clear);
+    const y0 = floor + bottom;
+    const y1 = floor + top;
+    /** A box spanning `from`..`to` along the wall and `half` either side of its middle. */
+    const run = (from: number, to: number, halfDepth: number, yb: number, yt: number) =>
+      alongX
+        ? at({ x: [from, to], z: [mid - halfDepth, mid + halfDepth] }, yb, yt)
+        : at({ x: [mid - halfDepth, mid + halfDepth], z: [from, to] }, yb, yt);
 
-  const ribbonZ = bz1 - WALL / 2;
-  const ribbonX0 = bx0 + 1.2;
-  const ribbonX1 = bx1 - 0.9;
-  add('luz', 'glass', box(ribbonX0, ribbonX1, by0 + SILL, lintelBottom, ribbonZ - GLASS / 2, ribbonZ + GLASS / 2));
-  for (const x of divisions(ribbonX0, ribbonX1, detail === 'full' ? 2 : 4)) {
-    add('luz', 'wood', box(x - FRAME / 2, x + FRAME / 2, by0 + SILL, lintelBottom, ...frameZ(ribbonZ)));
+    if (opening.type === 'passage') return;
+    if (opening.type === 'door') {
+      const swing = doorSwing(wall, opening);
+      const [hx, hz] = swing.hinge;
+      const [tx, tz] = swing.tip;
+      const inward = opening.hinge === 'min' ? 1 : -1;
+      const leaf: Rect = alongX
+        ? { x: inward > 0 ? [hx, hx + LEAF] : [hx - LEAF, hx], z: [Math.min(hz, tz), Math.max(hz, tz)] }
+        : { x: [Math.min(hx, tx), Math.max(hx, tx)], z: inward > 0 ? [hz, hz + LEAF] : [hz - LEAF, hz] };
+      add('luz', 'wood', at(leaf, y0, y1 - 0.01));
+      return;
+    }
+
+    add('luz', 'glass', run(a, b, GLASS / 2, y0, y1));
+    let inner: number[];
+    if (opening.type === 'slider') {
+      // A post where each leaf meets the next; the low tier keeps every other one.
+      inner = divisions(a, b, (b - a) / opening.leaves).filter((_, i) => detail === 'full' || i % 2 === 1);
+    } else {
+      // Fixed mullions where partitions meet the glass, and lighter ones between them.
+      const fixed = opening.type === 'window' ? (opening.mullions ?? []).map((m) => a + m) : [];
+      const stops = [a, ...fixed, b];
+      const step = detail === 'full' ? 2 : 4;
+      inner = [...fixed, ...stops.slice(1).flatMap((stop, i) => divisions(stops[i], stop, step))];
+    }
+    const posts = [a + FRAME / 2, ...inner, b - FRAME / 2];
+    for (const s of posts) add('luz', 'wood', run(s - FRAME / 2, s + FRAME / 2, FRAME_DEPTH / 2, y0, y1));
+    add('luz', 'wood', run(a, b, FRAME_DEPTH / 2, y1 - 0.1, y1));
+    add('luz', 'wood', run(a, b, FRAME_DEPTH / 2, y0, y0 + 0.08));
   }
 
-  // The cantilevered end is glazed floor to ceiling: a framed view.
-  const endX = bx1 - WALL / 2;
-  const endX0 = endX - FRAME_DEPTH / 2;
-  const endX1 = endX + FRAME_DEPTH / 2;
-  add('luz', 'glass', box(endX - GLASS / 2, endX + GLASS / 2, by0, top - SLAB, bz0 + WALL, bz1 - WALL));
-  for (const z of [bz0 + WALL + FRAME / 2, ...divisions(bz0 + WALL, bz1 - WALL, detail === 'full' ? 2.4 : 7), bz1 - WALL - FRAME / 2]) {
-    add('luz', 'wood', box(endX0, endX1, by0, top - SLAB, z - FRAME / 2, z + FRAME / 2));
-  }
-  add('luz', 'wood', box(endX0, endX1, lintelBottom - FRAME / 2, lintelBottom + FRAME / 2, bz0 + WALL, bz1 - WALL));
-
-  // Habitar: the roof, the terrace on the base and its parapet.
-  add('habitar', 'concrete', box(bx0 - 0.15, bx1 + 0.15, top - SLAB, top, bz0 - 0.15, bz1 + 0.15));
-  if (bz1 < az1 - 0.2) {
-    add('habitar', 'wood', box(ax0 + WALL, ax1 - WALL, ah, ah + 0.06, bz1, az1 - 0.2));
-    add('habitar', 'concrete', box(ax0, ax1, ah, ah + 0.9, az1 - 0.2, az1));
-  }
+  // Habitar: the roof, and the terrace on the base with its deck and parapets.
+  const roof: Rect = {
+    x: [plan.upper.slab.x[0] - EAVE, plan.upper.slab.x[1] + EAVE],
+    z: [plan.upper.slab.z[0] - EAVE, plan.upper.slab.z[1] + EAVE],
+  };
+  add('habitar', 'concrete', at(roof, top - slab, top));
+  for (const deck of plan.terrace.decks) add('habitar', 'wood', at(deck, terraceFloor - DECK, terraceFloor));
+  for (const bed of plan.terrace.gravel) add('habitar', 'concrete', at(bed, terraceFloor - DECK, terraceFloor));
+  for (const wall of plan.terrace.parapets) add('habitar', 'concrete', at(wall, terraceFloor - DECK, terraceFloor + parapet));
+  for (const rail of plan.terrace.rails) add('luz', 'glass', at(rail, terraceFloor, terraceFloor + RAIL));
 
   const layerBounds = Object.fromEntries(
     LAYERS.map((layer) => [layer, union(parts.filter((part) => part.layer === layer).map((part) => part.box))]),
@@ -194,9 +255,18 @@ export function deriveBuilding(config: BuildingConfig, detail: Detail): Building
 
   // The sketch: every volume's edges, the ribbon window, and two datum lines on the ground.
   const edges = [baseBox, upperBox, bladeBox].flatMap(boxEdges);
+  const ribbonWall = plan.upper.walls.find((wall) => wall.z[1] === plan.upper.slab.z[1] && runsAlongX(wall));
+  const ribbon = ribbonWall?.openings?.find((opening) => opening.type === 'window');
+  const [bx0, by0] = upperBox.min;
+  const [bx1, , bz1] = upperBox.max;
+  if (ribbon && ribbon.type === 'window') {
+    for (const y of [by0 + ribbon.sill, by0 + ribbon.head]) {
+      edges.push({ from: [bx0, y, bz1], to: [bx1, y, bz1], direction: 'horizontal' });
+    }
+  }
+  const [, , az1] = baseBox.max;
+  const [ax1] = baseBox.max;
   edges.push(
-    { from: [bx0 + WALL, by0 + SILL, bz1], to: [bx1, by0 + SILL, bz1], direction: 'horizontal' },
-    { from: [bx0 + WALL, lintelBottom, bz1], to: [bx1, lintelBottom, bz1], direction: 'horizontal' },
     { from: [-config.site.width / 2 - 1, 0, az1 + 1.2], to: [config.site.width / 2 + 1, 0, az1 + 1.2], direction: 'horizontal' },
     { from: [ax1, 0, -config.site.depth / 2 - 1], to: [ax1, 0, config.site.depth / 2 + 1], direction: 'horizontal' },
   );
@@ -208,7 +278,7 @@ export function deriveBuilding(config: BuildingConfig, detail: Detail): Building
   return {
     parts,
     volumes: [baseBox, upperBox, bladeBox],
-    height: Math.max(top, blade.height),
+    height: Math.max(top, plan.blade.height),
     layerBounds,
     sketch,
   };

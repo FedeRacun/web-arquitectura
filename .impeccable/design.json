@@ -275,6 +275,7 @@
       "One sentence per scene, display serif, at most one copper word in it.",
       "Hairline (1px) linework for every interface mark; no boxes, no radii.",
       "Charcoal sketch strokes that overshoot corners, waver and thin at their ends.",
+      "A ground floor plan drafted to convention after the sketch (poché, door swings, windows, stair, axes, dimensions, room names with areas and levels, north point, scale); the building rises from it.",
       "A single heavy easing curve for every CSS transition."
     ],
     "rules": [
@@ -318,7 +319,8 @@
       "Don't use bounce, spring, or overshoot easing, and don't add sound.",
       "Don't italicise emphasis; copper is the emphasis.",
       "Don't put a nav, logo or second action on the page; the single action arrives in the last scene.",
-      "Don't render the building as a clean CAD wireframe; strokes overshoot, waver and thin like charcoal."
+      "Don't render the building as a clean CAD wireframe; strokes overshoot, waver and thin like charcoal. The sketch is charcoal; the plan that follows it is not.",
+      "Don't draw the plan as a diagram of boxes: an architect reads it, so it carries poché, door swings, window symbols, the stair, axes, dimensions, room names with areas and levels, the north point and a scale."
     ]
   }
 }

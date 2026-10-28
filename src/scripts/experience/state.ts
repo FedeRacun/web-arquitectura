@@ -27,9 +27,11 @@ export function createState() {
     siteDraw: 0,
     siteOpacity: 1,
 
-    // The building.
+    // The building: its sketch, the plan drafted on the plot, then the volume.
     sketchDraw: 0,
     sketchOpacity: 1,
+    plan: 0,
+    planOpacity: 1,
     grow: 0,
     wave: 0,
     interior: 0,

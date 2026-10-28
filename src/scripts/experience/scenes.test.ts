@@ -44,26 +44,29 @@ describe('scenes', () => {
     expect(localProgress(1, 'luz')).toBe(1);
   });
 
-  it('rests at the top, at each sentence, on the light and at the end; the sketch is drawn on the way', () => {
+  it('rests at the top, on the finished plan, at each sentence, on the light and at the end; the sketch is drawn on the way', () => {
     const stops = restStops();
     expect(stops[0]).toBe(0);
     expect(stops.at(-1)).toBeCloseTo(1, 10);
-    expect(stops.slice(1, -1).map(sceneAt)).toEqual(['extrusion', 'materia', 'luz', 'despiece', 'mesa']);
+    expect(stops.slice(1, -1).map(sceneAt)).toEqual(['lineas', 'extrusion', 'materia', 'luz', 'despiece', 'mesa']);
+    expect(localProgress(stops[1], 'lineas')).toBeGreaterThan(0.9);
     for (let i = 1; i < stops.length; i++) expect(stops[i]).toBeGreaterThan(stops[i - 1]);
   });
 
   it('finds the next rest in the direction of the gesture', () => {
-    const [top, extrusion, materia] = restStops();
-    expect(nextStop(top, 1)).toBe(extrusion);
+    const [top, plan, extrusion, materia] = restStops();
+    expect(nextStop(top, 1)).toBe(plan);
+    expect(nextStop(plan, 1)).toBe(extrusion);
     expect(nextStop((extrusion + materia) / 2, 1)).toBe(materia);
     expect(nextStop((extrusion + materia) / 2, -1)).toBe(extrusion);
     expect(nextStop(materia, -1)).toBe(extrusion);
   });
 
   it('treats a rest the scroll is a hair away from as already reached', () => {
-    const [top, extrusion, materia] = restStops();
+    const [top, plan, extrusion, materia] = restStops();
     expect(nextStop(extrusion - 0.001, 1)).toBe(materia);
-    expect(nextStop(extrusion + 0.001, -1)).toBe(top);
+    expect(nextStop(extrusion + 0.001, -1)).toBe(plan);
+    expect(nextStop(plan + 0.001, -1)).toBe(top);
   });
 
   it('has nowhere to go past the top or the end', () => {

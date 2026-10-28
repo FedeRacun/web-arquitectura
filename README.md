@@ -2,7 +2,7 @@
 
 A one-page site for architects who design and build. The visitor builds a
 procedural building with the scroll, across eight scenes: the empty plot, the
-sketch, the extrusion, the material, the light, the exploded layers, the model
+sketch and the ground floor plan, the extrusion, the material, the light, the exploded layers, the model
 on the table and the closing with a WhatsApp button.
 
 Static Astro site, one Three.js scene, one GSAP ScrollTrigger timeline, Lenis
@@ -45,9 +45,7 @@ from these numbers; the code stays as it is.
 | `whatsapp.number` | The number the button opens, in international format |
 | `whatsapp.message` | The text the chat starts with |
 | `building.site` | The plot drawn in scene 1 and seen from above in scene 8 (metres) |
-| `building.base` | The glazed ground floor |
-| `building.upper` | The upper bar and how far it cantilevers (`shift`) |
-| `building.blade` | The concrete blade wall that crosses both floors |
+| `building.plan` | The house itself, in [`src/config/plan.ts`](src/config/plan.ts): both floor plans (walls, doors, windows, columns, the stair, rooms, fittings), the grid, the heights, the blade wall, the galería and the terrace. Scene 2 drafts the ground floor plan from it and scene 3 raises every wall, opening and floor from the same numbers |
 | `materials.*` | Concrete, wood, glass, the warm interior light and the balsa of the model |
 
 **Before publishing:** `whatsapp.number` is a placeholder

@@ -3,7 +3,8 @@ import { Color, Fog, Group, NeutralToneMapping, PCFShadowMap, Scene, Vector2, Ve
 import { architect } from '../../config/architect';
 import { createMassing } from './building/massing';
 import { createSharedUniforms } from './building/materialWave';
-import { LAYERS, deriveBuilding, type Box, type LayerId } from './building/params';
+import { LAYERS, deriveBuilding, planOffset, type Box, type LayerId } from './building/params';
+import { createPlanSheet } from './building/planSheet';
 import { createSketch } from './building/sketch';
 import { BOARD_THICKNESS, createSite } from './building/site';
 import { createTable } from './building/table';
@@ -36,7 +37,7 @@ const LAMP = 520;
 /** Pixel ratios the renderer steps down through when frames run late. */
 const RATIO_STEPS = [2, 1.5, 1.25, 1];
 /** Height the closing button extrudes: the ground floor. */
-const FIRST_FLOOR = architect.building.base.height;
+const FIRST_FLOOR = architect.building.plan.heights.ground;
 
 export interface ExperienceDom {
   canvas: HTMLCanvasElement;
@@ -89,7 +90,17 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   const plot = createSite(site.width, site.depth, { bone: BONE, ground: GROUND }, lowDetail ? 0.8 : 0.35);
   plot.board.material.transparent = true;
   plot.board.material.opacity = 0;
-  model.add(massing.root, sketch.mesh, plot.outline.mesh, plot.board);
+  // The board first, then the plan drawn on it, then the frosted walls rising from the plan.
+  plot.board.renderOrder = -2;
+  const sheet = createPlanSheet(architect.building.plan, site, {
+    color: BONE,
+    pixelsPerMetre: lowDetail ? 60 : 118,
+    font: await letteringFont(),
+    offset: planOffset(architect.building.plan),
+    height: architect.building.plan.heights.slab,
+    maxSize: renderer.capabilities.maxTextureSize,
+  });
+  model.add(massing.root, sheet.mesh, sketch.mesh, plot.outline.mesh, plot.board);
   scene.add(plot.point);
 
   const table = createTable({ base: BASE, table: TABLE }, quality.shadows);
@@ -135,6 +146,9 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     const rising = s.ctaGrow / FIRST_FLOOR;
     sketch.uniforms.uOpacity.value = Math.max(s.sketchOpacity, 0.6 * rising) * (1 - s.model);
     sketch.uniforms.uClip.value = s.ctaGrow > 0.001 ? s.ctaGrow : 1e6;
+    sheet.uniforms.uDraw.value = s.plan;
+    sheet.uniforms.uOpacity.value = s.planOpacity * (1 - s.model);
+    sheet.mesh.visible = s.plan > 0.001 && sheet.uniforms.uOpacity.value > 0.001;
     plot.outline.uniforms.uDraw.value = s.siteDraw;
     plot.outline.uniforms.uOpacity.value = s.siteOpacity * (1 - 0.65 * s.model);
 
@@ -224,6 +238,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   // The first frame compiles every program while the preloader still covers the page.
   apply(state);
   renderer.compile(scene, rig.camera);
+  renderer.initTexture(sheet.texture);
   state.point = 1;
   draw();
 
@@ -331,6 +346,17 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   }
 }
 
+/** The family the plan is lettered in, once its two weights have loaded. */
+async function letteringFont() {
+  const family = getComputedStyle(document.documentElement).getPropertyValue('--font-dm-sans').trim() || 'sans-serif';
+  try {
+    await Promise.all([document.fonts.load(`400 32px ${family}`), document.fonts.load(`500 32px ${family}`)]);
+  } catch {
+    // A family the browser cannot load letters the plan in its fallback.
+  }
+  return family;
+}
+
 /** Reduced motion: the building stands finished and still. */
 function finishedBuilding(state: ExperienceState, height: number) {
   Object.assign(state, {
@@ -339,6 +365,7 @@ function finishedBuilding(state: ExperienceState, height: number) {
     siteDraw: 1,
     siteOpacity: 0.4,
     sketchOpacity: 0,
+    planOpacity: 0,
     ground: 1,
     point: 0,
     azimuth: 0.62,

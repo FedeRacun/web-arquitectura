@@ -23,6 +23,9 @@ export interface TimelineOptions {
   onUpdate(progress: number): void;
 }
 
+/** Over the plot, nearly plumb, to read the plan as drawn: south at the top, the garden below. */
+const PLAN_VIEW = { azimuth: 0.1, elevation: 1.2, distance: 40, targetX: 0, targetY: 0, targetZ: 1.2, frameX: 0, frameY: 0 };
+
 const at = (id: SceneId, fraction = 0) => {
   const span = sceneSpans().find((candidate) => candidate.id === id)!;
   const total = scrollScreens();
@@ -87,22 +90,28 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   put('vacio', 0.3, 0.8, { point: 0 });
   put('vacio', 0.35, 1, { azimuth: 0.5, elevation: 0.4, distance: 44, targetY: 2.4, frameY: 0, ease: 'power1.inOut' });
 
-  // 2 · Las líneas. The scroll draws; stopping leaves a stroke halfway.
-  put('lineas', 0, 0.92, { sketchDraw: 1 });
-  put('lineas', 0, 1, { azimuth: 0.64, elevation: 0.36 });
-  put('lineas', 0.35, 1, { ground: 0.55 });
+  // 2 · Las líneas. The scroll draws; stopping leaves a stroke halfway. The sketch gives way to the
+  // plan: the camera rises over the plot and the ground floor plan is drafted on it at full size.
+  put('lineas', 0, 0.5, { sketchDraw: 1 });
+  put('lineas', 0, 0.45, { azimuth: 0.64, elevation: 0.36 });
+  put('lineas', 0.35, 0.8, { ground: 0.55 });
+  put('lineas', 0.42, 0.86, { ...PLAN_VIEW, ease: 'power2.inOut' });
+  put('lineas', 0.45, 0.75, { sketchOpacity: 0.12 });
+  put('lineas', 0.5, 0.9, { plan: 1 });
 
-  // 3 · La extrusión. The lines rise into frosted walls; the camera orbits very slowly.
+  // 3 · La extrusión. The walls rise from their plan into frosted volume; the camera comes down and orbits very slowly.
   put('extrusion', 0, 0.72, { grow: height, ease: 'power1.inOut' });
   put('extrusion', 0.3, 1, { sketchOpacity: 0.28, siteOpacity: 0.4 });
-  put('extrusion', 0, 1, { azimuth: 1.02, elevation: 0.3, distance: 40, targetY: 3 });
+  // The plan stays under the house it became, quieter, so the lettering does not read through the walls.
+  put('extrusion', 0.25, 0.7, { planOpacity: 0.6 });
+  put('extrusion', 0, 1, { azimuth: 1.02, elevation: 0.3, distance: 40, targetY: 3, targetZ: 0, ease: 'power1.inOut' });
   put('extrusion', 0, 0.45, { frameX: 0.13, ground: 1, ease: 'power1.inOut' });
   sentence(tl, c.extrusion, at('extrusion', 0.22), at('extrusion', 0.8));
 
   // 4 · La materia. Three waves sweep up the volume: concrete, then wood, then glass,
   // all done before the guided scroll rests on the sentence.
   put('materia', 0.04, 0.74, { wave: 3 });
-  put('materia', 0, 0.3, { sketchOpacity: 0 });
+  put('materia', 0, 0.3, { sketchOpacity: 0, planOpacity: 0 });
   // The sun swings round to graze the facade, ready to sweep across it in scene 5.
   put('materia', 0, 1, { sunAzimuth: 1.3, sunElevation: 0.3 });
   put('materia', 0, 1, { azimuth: 0.74, elevation: 0.22, distance: 40, targetY: 4 });

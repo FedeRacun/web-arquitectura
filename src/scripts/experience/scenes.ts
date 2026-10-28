@@ -9,13 +9,14 @@
  * scene with a sentence, just before the sentence leaves, when the scene has
  * played out and its sentence is still on screen. Luz has no sentence but
  * rests too, with the sun halfway across, the interior lighting up and the
- * light leaning to the pointer. Líneas has no rest: a half-drawn sketch the
- * visitor did not choose to stop on reads as empty, so it is drawn on the way.
+ * light leaning to the pointer. Líneas rests only at its end, on the finished
+ * ground floor plan seen from above: the sketch before it is drawn on the way,
+ * since a half-drawn sketch the visitor did not choose to stop on reads as empty.
  */
 
 export const SCENES = [
   { id: 'vacio', screens: 1, rest: 0 },
-  { id: 'lineas', screens: 1.2 },
+  { id: 'lineas', screens: 1.2, rest: 0.95 },
   { id: 'extrusion', screens: 1.2, rest: 0.76 },
   { id: 'materia', screens: 1.5, rest: 0.78 },
   { id: 'luz', screens: 1.2, rest: 0.66 },
