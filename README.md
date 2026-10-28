@@ -38,6 +38,24 @@ pnpm dev
 | `pnpm preview:cloudflare` | Build and serve with `wrangler dev` |
 | `pnpm deploy:cloudflare` | Build and deploy with `wrangler deploy` |
 
+## Deploy
+
+The repository deploys with Cloudflare Workers Builds, connected to GitHub in
+the Cloudflare dashboard (Workers & Pages → Create → Import a repository).
+Nothing else is needed in the repository: [`wrangler.jsonc`](wrangler.jsonc)
+serves `dist/` as static assets with no Worker script, `public/_headers` sets
+caching and security headers, and the build reads `.node-version` and the
+`packageManager` field for Node and pnpm.
+
+| Setting | Value |
+| --- | --- |
+| Worker name | `web-arquitectura`, the `name` in `wrangler.jsonc`; the build fails if they differ |
+| Build command | `pnpm verify`, so a failing test, check or JS budget stops the deploy |
+| Deploy command | `npx wrangler deploy` (the default) |
+| Production branch | `main` |
+| Preview builds | On for the other branches, so each pull request gets its own URL |
+| Variables and secrets | None |
+
 ## Make it someone's
 
 Everything that changes from one architect to the next lives in
