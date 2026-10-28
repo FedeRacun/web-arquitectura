@@ -3,7 +3,12 @@
 A one-page site for architects who design and build. The visitor builds a
 procedural building with the scroll, across eight scenes: the empty plot, the
 sketch and the ground floor plan, the extrusion, the material, the light, the exploded layers, the model
-on the table and the closing with a WhatsApp button.
+on the table and the closing with a WhatsApp button. The copy follows the
+architect's work process: each scene names its stage (terreno, anteproyecto,
+proyecto, obra, entrega) and says in one line what the studio does in it.
+The lines live in [`src/pages/index.astro`](src/pages/index.astro); edit them
+for an architect who works alone ("yo" instead of "nosotros") or does not
+offer a practice they name.
 
 Static Astro site, one Three.js scene, one GSAP ScrollTrigger timeline, Lenis
 for the scroll and Tailwind for the page. It deploys to Cloudflare as static
@@ -78,8 +83,9 @@ CSS variable names.
   "Bajar" with a drifting arrow invites the first step; it is a button, so a
   click or a tap takes that step too.
 - **Layer words.** In the exploded scene each layer shows its part's name and
-  what it does for the house: Estructura (lo que sostiene), Muros (lo que
-  protege), Aberturas (lo que deja entrar la luz), Cubierta (lo que cobija).
+  what the studio does with it: Estructura (la calculamos y revisamos en
+  obra), Muros (los aislamos del frío y la humedad), Aberturas (las ubicamos
+  según el sol y la vista), Cubierta (la impermeabilizamos y probamos con agua).
   They always show, dim, beside their layers; hovering a layer lights its name
   in copper. The words live in
   [`ExplodedWords.astro`](src/components/ExplodedWords.astro). On narrow screens only one word fits, as a

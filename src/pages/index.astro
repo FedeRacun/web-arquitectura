@@ -10,41 +10,61 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base
-  title="Del trazo al volumen"
-  description="Un edificio que se levanta con el scroll: del trazo al volumen. Arquitectura que se diseña y se construye."
+  title="Diseñamos y construimos tu casa · Estudio de arquitectura"
+  description="Del terreno a la entrega de llaves: anteproyecto, proyecto, permiso, obra y final de obra, con un mismo equipo."
 >
   <Preloader />
   <SceneCanvas />
 
+  <!-- Each scene is a stage of the work: the headline, what the studio does in it, and the stage's name. -->
   <main data-story>
     <StoryScene id="vacio" placement="center-low" opening>
-      <h1 class="phrase phrase-clauses"><span>Primero se piensa.</span> <span>Después se <em>construye</em>.</span></h1>
+      <h1 class="phrase phrase-clauses"><span>Diseñamos tu casa.</span> <span>Y la <em>construimos</em>.</span></h1>
+      <p class="phrase-note">Visitamos tu terreno, vemos qué permite el municipio y escuchamos qué necesitás.</p>
+      <p class="phrase-stage">01 · Terreno</p>
     </StoryScene>
     <ScrollHint />
 
-    <StoryScene id="lineas" />
+    <StoryScene id="lineas" placement="left-top">
+      <p class="phrase">Cada ambiente, con su <em>medida</em>.</p>
+      <p class="phrase-note">Del croquis a la planta: la ajustamos con vos antes de levantar un muro.</p>
+      <p class="phrase-stage">02 · Anteproyecto</p>
+    </StoryScene>
 
     <StoryScene id="extrusion" placement="left-low">
-      <p class="phrase">Diseñar es imaginar el <em>peso</em>.</p>
+      <p class="phrase">Lo que <em>dibujamos</em> es lo que construimos.</p>
+      <p class="phrase-note">Planos completos, presupuesto detallado y permiso de obra, antes de empezar.</p>
+      <p class="phrase-stage">03 · Proyecto</p>
     </StoryScene>
 
     <StoryScene id="materia" placement="right-high">
-      <p class="phrase">Construir es hacerlo <em>existir</em>.</p>
+      <p class="phrase">Del hormigón al último <em>vidrio</em>.</p>
+      <p class="phrase-note">La construye el mismo equipo que la diseñó, y te contamos cómo avanza.</p>
+      <p class="phrase-stage">04 · Obra</p>
     </StoryScene>
 
-    <StoryScene id="luz" />
+    <StoryScene id="luz" placement="left-high">
+      <p class="phrase">El <em>sol</em> entra donde lo dibujamos.</p>
+      <p class="phrase-note">Te entregamos la casa terminada y tramitamos el final de obra.</p>
+      <p class="phrase-stage">05 · Entrega</p>
+    </StoryScene>
 
     <StoryScene id="despiece" placement="left-high" label="El despiece">
+      <p class="phrase phrase-narrow">Lo que resolvemos en cada <em>capa</em>.</p>
+      <p class="phrase-stage">Por dentro</p>
       <ExplodedWords />
     </StoryScene>
 
     <StoryScene id="mesa" placement="left-low">
-      <p class="phrase">Cada obra empieza como <em>esta</em>.</p>
+      <p class="phrase">Cada terreno pide su <em>propia</em> casa.</p>
     </StoryScene>
 
     <StoryScene id="cierre" placement="center">
-      <h2 class="phrase phrase-clauses">Tu próxima obra.</h2>
-      <WhatsAppCta />
+      <h2 class="phrase phrase-clauses">¿Empezamos por tu <em>terreno</em>?</h2>
+      <div class="closing-action">
+        <p class="phrase-note">Contanos dónde está y qué necesitás. La primera charla es para eso.</p>
+        <WhatsAppCta />
+      </div>
     </StoryScene>
   </main>
 

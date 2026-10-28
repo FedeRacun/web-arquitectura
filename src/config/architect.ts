@@ -13,7 +13,7 @@ export const architect = {
   whatsapp: {
     // PLACEHOLDER: generic demo number. Replace with the architect's number in international format.
     number: '+54 9 11 0000-0000',
-    message: 'Hola, quiero conversar sobre mi próxima obra.',
+    message: 'Hola, quiero construir una casa y me gustaría contarles mi proyecto.',
   },
   building: {
     /** The empty plot drawn in scene 1 and seen from above in scene 8. */

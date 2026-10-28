@@ -1,7 +1,7 @@
 ---
 /*
  * The four words of the exploded axonometric, one per layer: the part's
- * name and, under it, what that part does for the house. They are real
+ * name and, under it, what the studio does with that part. They are real
  * text; with the experience running each one hangs off its layer on a
  * leader line, dim until that layer is hovered or tapped. Narrow screens have
  * room for one word at a time: it shows as a caption under the stack, and the
@@ -9,10 +9,10 @@
  */
 // The ids name the layers in the scene (params.ts); the words are what the visitor reads.
 const LAYERS = [
-  { id: 'estructura', word: 'Estructura', role: 'Lo que sostiene.' },
-  { id: 'envolvente', word: 'Muros', role: 'Lo que protege.' },
-  { id: 'luz', word: 'Aberturas', role: 'Lo que deja entrar la luz.' },
-  { id: 'habitar', word: 'Cubierta', role: 'Lo que cobija.' },
+  { id: 'estructura', word: 'Estructura', role: 'La calculamos y revisamos en obra.' },
+  { id: 'envolvente', word: 'Muros', role: 'Los aislamos del frío y la humedad.' },
+  { id: 'luz', word: 'Aberturas', role: 'Las ubicamos según el sol y la vista.' },
+  { id: 'habitar', word: 'Cubierta', role: 'La impermeabilizamos y probamos con agua.' },
 ] as const;
 ---
 
