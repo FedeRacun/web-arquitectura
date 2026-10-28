@@ -316,6 +316,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
       intro.to(state, { pointTravel: 1, duration: 1.4, ease: 'power2.inOut' }, 1);
       intro.to(state, { siteDraw: 1, duration: 3, ease: 'power1.inOut' }, 2.35);
       intro.to(state, { point: 0.45, duration: 0.9, ease: 'power1.out' }, 5.1);
+      // The fromTo hides the sentence the preloader was covering before the preloader starts to fade.
       if (content.vacio) {
         intro.fromTo(content.vacio, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.6, ease: 'power2.out' }, 4.9);
       }

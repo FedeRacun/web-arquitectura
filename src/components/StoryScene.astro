@@ -12,9 +12,11 @@ interface Props {
   /** Where the sentence sits over the scene. */
   placement?: 'center-low' | 'left-low' | 'right-high' | 'left-high' | 'center';
   label?: string;
+  /** The page's first sentence: painted with the first frame, under the preloader, until the intro reveals it. */
+  opening?: boolean;
 }
 
-const { id, placement = 'center', label } = Astro.props;
+const { id, placement = 'center', label, opening = false } = Astro.props;
 const index = SCENES.findIndex((scene) => scene.id === id);
 const last = index === SCENES.length - 1;
 // The last section adds the final screen the page ends on.
@@ -32,7 +34,12 @@ const empty = !Astro.slots.has('default');
 >
   {
     !empty && (
-      <div class="story-scene-content" data-scene-content data-placement={placement}>
+      <div
+        class="story-scene-content"
+        data-scene-content
+        data-placement={placement}
+        data-opening={opening ? '' : undefined}
+      >
         <slot />
       </div>
     )
@@ -66,6 +73,16 @@ const empty = !Astro.slots.has('default');
     z-index: 20;
     opacity: 0;
     pointer-events: none;
+  }
+
+  /*
+   * The opening sentence is painted with the first frame, hidden under the opaque preloader;
+   * the intro hides it again before the preloader fades and reveals it once the plot is drawn.
+   * This only moves Largest Contentful Paint (which ignores occlusion): visitors still see the
+   * sentence when the intro brings it in.
+   */
+  :global(.js-experience) [data-opening] {
+    opacity: 1;
   }
 
   :global(.js-experience) [data-placement='center-low'] {
