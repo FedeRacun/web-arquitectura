@@ -287,9 +287,15 @@ const { projects } = architect;
    * What shows at each step. Closed: nothing. The row: the heading, the way back, the labels once
    * their plans are drafted. A plan in focus: the way back, its label and the pager. What is not
    * shown is hidden too, not just transparent, so neither Tab nor the pointer can reach it: visibility
-   * switches when the fade starts on the way in and when it ends on the way out.
+   * switches when the fade starts on the way in and when it ends on the way out. The heading only
+   * fades: Tab and the pointer never reach it, and it takes focus the moment the view opens.
    */
-  :global(.js-experience) :is(.projects-title, .projects-back, .projects-item, .projects-pager) {
+  :global(.js-experience) .projects-title {
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-settle);
+  }
+
+  :global(.js-experience) :is(.projects-back, .projects-item, .projects-pager) {
     opacity: 0;
     visibility: hidden;
     transition:
@@ -301,7 +307,11 @@ const { projects } = architect;
     pointer-events: auto;
   }
 
-  :global(.js-experience) .projects[data-mode='list'] .projects-title,
+  :global(.js-experience) .projects[data-mode='list'] .projects-title {
+    opacity: 1;
+    transition: opacity 1.2s var(--ease-settle) 0.9s;
+  }
+
   :global(.js-experience) .projects[data-mode] .projects-back {
     opacity: 1;
     visibility: visible;
