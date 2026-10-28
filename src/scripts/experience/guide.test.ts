@@ -1,14 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { createGestureGate, glideSeconds } from './guide';
+import { createGestureGate, glideEasing, glideSeconds } from './guide';
 
-describe('glideSeconds', () => {
-  it('takes longer over a longer distance', () => {
-    expect(glideSeconds(2.5)).toBeGreaterThan(glideSeconds(1.2));
+/** Average speed of the easing between two moments of the glide. */
+const pace = (from: number, to: number) => (glideEasing(to) - glideEasing(from)) / (to - from);
+
+describe('glideEasing', () => {
+  it('runs from the start to the stop and never backs up', () => {
+    expect(glideEasing(0)).toBe(0);
+    expect(glideEasing(1)).toBeCloseTo(1, 10);
+    for (let t = 0.01; t <= 1; t += 0.01) expect(glideEasing(t)).toBeGreaterThanOrEqual(glideEasing(t - 0.01));
   });
 
-  it('stays slow on a short hop and bounded on a long one', () => {
-    expect(glideSeconds(0.1)).toBe(1.6);
-    expect(glideSeconds(20)).toBe(3.4);
+  it('starts fast', () => {
+    expect(pace(0, 0.04)).toBeGreaterThan(2.5 * pace(0.45, 0.55));
+  });
+
+  it('settles into an even pace while the scene plays', () => {
+    expect(pace(0.7, 0.8) / pace(0.4, 0.5)).toBeGreaterThan(0.9);
+    expect(pace(0.7, 0.8) / pace(0.4, 0.5)).toBeLessThanOrEqual(1);
+  });
+
+  it('lands softly on the stop', () => {
+    expect(pace(0.98, 1)).toBeLessThan(0.25 * pace(0.45, 0.55));
+  });
+});
+
+describe('glideSeconds', () => {
+  it('keeps the same cruising speed over any distance', () => {
+    expect(glideSeconds(1.7) / 1.7).toBeCloseTo(glideSeconds(1.2) / 1.2, 10);
+  });
+
+  it('never rushes a short hop nor drags a long one', () => {
+    expect(glideSeconds(0.1)).toBe(1.2);
+    expect(glideSeconds(20)).toBe(4);
   });
 });
 

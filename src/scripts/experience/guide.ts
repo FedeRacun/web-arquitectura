@@ -17,9 +17,40 @@ const QUIET_MS = 220;
 const WHEEL_TRAVEL = 4;
 const TOUCH_TRAVEL = 12;
 
-/** Slow, and slower over a longer distance, but never a wait. */
+/*
+ * The glide's pace: off the mark fast, so the gesture is answered at once;
+ * then an even, slow cruise while the scene plays, so no animation is rushed;
+ * then a soft landing on the stop.
+ */
+/** Speed of the cruise, in screens of scroll per second. */
+const CRUISE = 0.55;
+/** Extra speed off the mark, in cruise speeds; it fades over about a tenth of the glide. */
+const BURST = 4;
+const BURST_FADE = 0.1;
+/** Closing share of the glide that slows to a stop. */
+const LANDING = 0.15;
+
+const speed = (t: number) => {
+  const pace = 1 + BURST * Math.exp(-t / BURST_FADE);
+  const landing = (t - (1 - LANDING)) / LANDING;
+  return landing > 0 ? pace * 0.5 * (1 + Math.cos(Math.PI * landing)) : pace;
+};
+
+// The easing is the integral of that speed, tabulated once and normalised to end at 1.
+const STEPS = 256;
+const TRAVELLED = [0];
+for (let i = 1; i <= STEPS; i++) TRAVELLED.push(TRAVELLED[i - 1] + speed((i - 0.5) / STEPS) / STEPS);
+const TOTAL = TRAVELLED[STEPS];
+
+export function glideEasing(t: number) {
+  const x = Math.min(Math.max(t, 0), 1) * STEPS;
+  const i = Math.min(Math.floor(x), STEPS - 1);
+  return (TRAVELLED[i] + (TRAVELLED[i + 1] - TRAVELLED[i]) * (x - i)) / TOTAL;
+}
+
+/** Long enough that the cruise runs at CRUISE whatever the distance; bounded for a short hop or a long chain. */
 export function glideSeconds(screens: number) {
-  return Math.min(Math.max(0.6 + 0.9 * screens, 1.6), 3.4);
+  return Math.min(Math.max(screens / TOTAL / CRUISE, 1.2), 4);
 }
 
 /** Lets through the first real move of each gesture as a direction to walk in; 0 for everything else. */
@@ -47,10 +78,6 @@ export function createGestureGate() {
   };
 }
 
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
-/** A walk carried on mid-glide is already moving: it only needs to slow down. */
-const easeOut = (t: number) => 1 - (1 - t) ** 3;
-
 const PAGING_KEYS: Record<string, 1 | -1> = { ArrowDown: 1, PageDown: 1, ' ': 1, ArrowUp: -1, PageUp: -1 };
 
 export interface GuidePath {
@@ -72,7 +99,8 @@ export function createGuide(lenis: Lenis, path: GuidePath) {
     heading = next;
     lenis.scrollTo(path.toScroll(next), {
       duration: glideSeconds(Math.abs(next - here) * scrollScreens()),
-      easing: onward ? easeOut : easeInOut,
+      // Carried on mid-glide or turned round, every new gesture gets the same quick start.
+      easing: glideEasing,
       onComplete: () => {
         heading = null;
       },
