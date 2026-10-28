@@ -1,16 +1,18 @@
 ---
 /*
- * The four words of the exploded axonometric, one per layer. They are real
+ * The four words of the exploded axonometric, one per layer: the part's
+ * name and, under it, what that part does for the house. They are real
  * text; with the experience running each one hangs off its layer on a
  * leader line, dim until that layer is hovered or tapped. Narrow screens have
  * room for one word at a time: it shows as a caption under the stack, and the
  * scene lights the four in turn when the layers come apart.
  */
+// The ids name the layers in the scene (params.ts); the words are what the visitor reads.
 const LAYERS = [
-  { id: 'estructura', word: 'Estructura' },
-  { id: 'envolvente', word: 'Envolvente' },
-  { id: 'luz', word: 'Luz' },
-  { id: 'habitar', word: 'Habitar' },
+  { id: 'estructura', word: 'Estructura', role: 'Lo que sostiene.' },
+  { id: 'envolvente', word: 'Muros', role: 'Lo que protege.' },
+  { id: 'luz', word: 'Aberturas', role: 'Lo que deja entrar la luz.' },
+  { id: 'habitar', word: 'Cubierta', role: 'Lo que cobija.' },
 ] as const;
 ---
 
@@ -19,7 +21,9 @@ const LAYERS = [
     LAYERS.map((layer) => (
       <li class="layer-word" data-layer-word={layer.id}>
         <span class="layer-leader" aria-hidden="true" />
-        <span class="layer-label">{layer.word}</span>
+        <span class="layer-label">
+          <span class="layer-name">{layer.word}</span> <span class="layer-role">{layer.role}</span>
+        </span>
       </li>
     ))
   }
@@ -41,6 +45,22 @@ const LAYERS = [
     display: none;
   }
 
+  .layer-label {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  /* The role reads as a quiet gloss under the name, in bone even when the name turns copper. */
+  .layer-role {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.35;
+    letter-spacing: 0;
+    color: var(--color-bone);
+    opacity: 0.75;
+  }
+
   /* Pinned beside the exploded layers: the scene writes --x/--y for each word. */
   :global(.js-experience) .layer-words {
     position: fixed;
@@ -48,24 +68,32 @@ const LAYERS = [
     display: block;
   }
 
+  /* The name's line sits on the layer's height (--y) and the role hangs below it. */
   :global(.js-experience) .layer-word {
     position: absolute;
     left: 0;
     top: 0;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.9rem;
-    translate: var(--x, -100vw) calc(var(--y, 0px) - 50%);
+    translate: var(--x, -100vw) calc(var(--y, 0px) - 0.5lh);
     font-family: var(--font-body);
     font-weight: 500;
     font-size: clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem);
+    line-height: 1.3;
     letter-spacing: 0.01em;
+  }
+
+  :global(.js-experience) .layer-role {
+    font-size: 0.85em;
   }
 
   :global(.js-experience) .layer-leader {
     display: block;
+    flex: none;
     width: clamp(1.75rem, 4vw, 3.5rem);
     height: 1px;
+    margin-top: calc(0.5lh - 0.5px);
     background: color-mix(in oklab, var(--color-bone) 45%, transparent);
     transform-origin: left center;
     transition:
@@ -101,11 +129,24 @@ const LAYERS = [
       bottom: 13svh;
       left: 50%;
       flex-direction: column;
+      align-items: center;
       gap: 0.75rem;
       translate: -50% 0;
       font-family: var(--font-display);
       font-weight: 400;
       font-size: 2.25rem;
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    :global(.js-experience) .layer-label {
+      justify-items: center;
+      gap: 0.4rem;
+    }
+
+    :global(.js-experience) .layer-role {
+      font-size: 1rem;
+      white-space: nowrap;
     }
 
     :global(.js-experience) .layer-leader,
@@ -113,6 +154,7 @@ const LAYERS = [
       flex: 1;
       width: 1px;
       height: auto;
+      margin-top: 0;
       transform-origin: center top;
       scale: 1 0;
       transition: scale 0.9s var(--ease-settle);
@@ -140,6 +182,11 @@ const LAYERS = [
     font-family: var(--font-display);
     font-weight: 400;
     font-size: clamp(2rem, 1.2rem + 3vw, 3.75rem);
+    line-height: 1.05;
+  }
+
+  :global(.js-experience.reduced-motion) .layer-role {
+    font-size: 1rem;
   }
 
   :global(.js-experience.reduced-motion) .layer-leader {

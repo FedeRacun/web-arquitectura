@@ -79,9 +79,12 @@ CSS variable names.
   scrollbar, Home and End still move freely. On the first scene a quiet
   "Bajar" with a drifting arrow invites the first step; it is a button, so a
   click or a tap takes that step too.
-- **Layer words.** In the exploded scene the four words (Estructura,
-  Envolvente, Luz, Habitar) always show, dim, beside their layers; hovering a
-  layer lights its word in copper. On narrow screens only one word fits, as a
+- **Layer words.** In the exploded scene each layer shows its part's name and
+  what it does for the house: Estructura (lo que sostiene), Muros (lo que
+  protege), Aberturas (lo que deja entrar la luz), Cubierta (lo que cobija).
+  They always show, dim, beside their layers; hovering a layer lights its name
+  in copper. The words live in
+  [`ExplodedWords.astro`](src/components/ExplodedWords.astro). On narrow screens only one word fits, as a
   caption under the stack, so the scene lights the four in turn once the layers
   have come apart; a tap takes over.
 - **One custom shader.** [`materialWave.ts`](src/scripts/experience/building/materialWave.ts)

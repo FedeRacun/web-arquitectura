@@ -114,7 +114,7 @@ These never appear as interface fills; they live inside the shader.
 
 ### Hierarchy
 - **Display** (400, clamp(2.1rem, 0.95rem + 3.5vw, 5rem), 1.04): the one sentence per scene. Balanced wrap, max 13ch; a two-clause sentence sets each clause on its own line and drops the measure.
-- **Headline** (400, clamp(2rem, 1.2rem + 3vw, 3.75rem), 1.05): the exploded-view layer words ("Estructura", "Envolvente", "Luz", "Habitar") when they read as a column, and on narrow screens as the caption under the stack (fixed 2.25rem).
+- **Headline** (400, clamp(2rem, 1.2rem + 3vw, 3.75rem), 1.05): the exploded-view layer words ("Estructura", "Muros", "Aberturas", "Cubierta") when they read as a column, and on narrow screens as the caption under the stack (fixed 2.25rem).
 - **Label** (DM Sans 500, clamp(0.95rem, 0.85rem + 0.35vw, 1.15rem), 0.01em): the layer words hung off their leader lines on wide screens.
 - **Button** (DM Sans 500, 1.125rem, 0.005em): "Escribir por WhatsApp".
 
@@ -157,7 +157,7 @@ The one action on the page, held back until the last scene.
 - Opens WhatsApp in a new tab and says so to screen readers ("(se abre en una pestaña nueva)").
 
 ### Leader-line Callout (signature)
-The exploded axonometric's four layer words. Each hangs off its layer on a 1px bone line at 45% strength (clamp(1.75rem, 4vw, 3.5rem) long, 0.9rem gap). The words always read at 60% opacity, so nobody has to find the hover to learn the layers. Hover or tap lengthens the line to clamp(3rem, 7vw, 6rem), turns it copper and lights the word to full copper, all over 0.9s on the settle curve. On narrow screens only one word fits: the line becomes a vertical plumb line that scales down from the layer to a display-serif caption, hidden until active, and the scene lights the four in turn, 1.2s apart, once the layers have come apart.
+The exploded axonometric's four layer words, each a part's name with what it does for the house under it in DM Sans ("Estructura / Lo que sostiene.", "Muros / Lo que protege.", "Aberturas / Lo que deja entrar la luz.", "Cubierta / Lo que cobija."). The role stays bone at 75% of the word's opacity, also when the name turns copper. Each hangs off its layer, its leader on the name's line, on a 1px bone line at 45% strength (clamp(1.75rem, 4vw, 3.5rem) long, 0.9rem gap). The words always read at 60% opacity, so nobody has to find the hover to learn the layers. Hover or tap lengthens the line to clamp(3rem, 7vw, 6rem), turns it copper and lights the word to full copper, all over 0.9s on the settle curve. On narrow screens only one word fits: the line becomes a vertical plumb line that scales down from the layer to a display-serif caption, hidden until active, and the scene lights the four in turn, 1.2s apart, once the layers have come apart.
 
 ### CAD Cursor
 Replaces the pointer on hover-capable devices: a copper crosshair of two 1px arms; over anything interactive the cross folds into a 0.875rem square pick box (0.45s, settle curve).
