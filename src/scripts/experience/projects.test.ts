@@ -4,13 +4,13 @@ import { Vector3 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { createCameraRig, lens, poseCamera, type CameraView } from './camera';
 import { createGuide } from './guide';
-import { blendView, navigate, projectsView, rowLayout, safeArea, type ProjectsNav } from './projects';
+import { blendView, navigate, projectsView, rowLayout, safeArea, standing, type ProjectsNav } from './projects';
 import { createState } from './state';
 
 const SIZES = [
-  { width: 26, depth: 18 },
-  { width: 30, depth: 20 },
-  { width: 24, depth: 16 },
+  { width: 26, depth: 18, height: 3.6 },
+  { width: 30, depth: 20, height: 6.75 },
+  { width: 24, depth: 16, height: 3.5 },
 ];
 
 /** Where each corner of a sheet lands on screen (NDC) for a view. */
@@ -100,12 +100,13 @@ describe('projectsView', () => {
   ];
 
   for (const screen of screens) {
-    it(`frames a whole sheet in focus, inside its margins, on a ${screen.name} screen`, () => {
+    it(`frames a whole sheet and its standing model in focus, inside its margins, on a ${screen.name} screen`, () => {
       const aspect = screen.width / screen.height;
       for (let index = 0; index < row.length; index++) {
         const view = projectsView(row, { mode: 'focus', index }, aspect, screen.narrow, -0.4);
         const safe = safeArea('focus', screen.narrow);
-        for (const point of corners(view, aspect, row[index], -0.4)) {
+        const sheet = row[index];
+        for (const point of [...corners(view, aspect, sheet, -0.4), ...corners(view, aspect, sheet, -0.4 + sheet.height)]) {
           expect(point.x).toBeGreaterThanOrEqual(-1 + 2 * safe.side - 1e-6);
           expect(point.x).toBeLessThanOrEqual(1 - 2 * safe.side + 1e-6);
           expect(point.y).toBeGreaterThanOrEqual(-1 + 2 * safe.bottom - 1e-6);
@@ -127,11 +128,22 @@ describe('projectsView', () => {
     }
   });
 
-  it('comes closer for a sheet in focus than for the list', () => {
+  it('comes closer for a sheet in focus than for the list, and turns to see its model in 3/4', () => {
     const list = projectsView(row, { mode: 'list', index: 0 }, 1440 / 900, false, -0.4);
     const focus = projectsView(row, { mode: 'focus', index: 0 }, 1440 / 900, false, -0.4);
     expect(focus.distance).toBeLessThan(list.distance);
-    expect(focus.elevation).toBeGreaterThan(list.elevation);
+    expect(focus.elevation).toBeLessThan(list.elevation);
+    expect(focus.azimuth).toBeGreaterThan(0.3);
+    expect(focus.azimuth).toBeLessThan(1.2);
+  });
+});
+
+describe('standing', () => {
+  it('stands only the house whose plan is in focus', () => {
+    expect(standing({ mode: 'focus', index: 1 }, 1)).toBe(true);
+    expect(standing({ mode: 'focus', index: 1 }, 0)).toBe(false);
+    expect(standing({ mode: 'list', index: 1 }, 1)).toBe(false);
+    expect(standing({ mode: 'closed', index: 1 }, 1)).toBe(false);
   });
 });
 

@@ -336,6 +336,26 @@ const { projects } = architect;
       visibility 0s linear 0.6s;
   }
 
+  /*
+   * In focus only the plan on screen keeps its label: the others fade with their sheets. They stay in the tab
+   * order, and reaching one brings its plan into focus, but a pointer passes through them.
+   */
+  :global(.js-experience) .projects[data-mode='focus'] .projects-item:not(:has([aria-current])) {
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-settle);
+  }
+
+  :global(.js-experience) .projects[data-mode='focus'] .projects-item:not(:has([aria-current])) .projects-label {
+    pointer-events: none;
+  }
+
+  /* Back from a plan the row is already drafted, so the labels return with their sheets instead of after the ink. */
+  :global(.js-experience) .projects[data-mode='list'][data-seen] .projects-item {
+    transition:
+      opacity 0.9s var(--ease-settle) 0.3s,
+      visibility 0s linear 0.3s;
+  }
+
   /* The veil the reduced-motion crossfade fades the frame to. */
   :global(.js-experience) .projects-veil {
     position: fixed;
