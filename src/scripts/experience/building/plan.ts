@@ -105,8 +105,15 @@ export interface Stair extends Rect {
 
 export interface Level {
   readonly name: string;
-  /** The floor slab under this level. */
+  /** The floor slab under this level; with a footprint, its bounding rect. */
   readonly slab: Rect;
+  /**
+   * Where the floor is not a plain rect (an L, a ring around a patio): rects
+   * whose union is the floor. They may share sides or overlap. `slab` stays
+   * their bounding rect, so the grid, the dimension strings and the sheet's
+   * frame still read it. Drawn only: the 3D house (params.ts) raises `slab`.
+   */
+  readonly footprint?: readonly Rect[];
   readonly walls: readonly Wall[];
   /** Column centres. */
   readonly columns: readonly Point[];
@@ -165,6 +172,25 @@ export interface Plan {
   };
 }
 
+/**
+ * What a plan sheet needs from a house: the main house's full `Plan`, or the
+ * plan of another house, which may have one storey and no blade, canopy,
+ * galería or terrace. Whatever a house does not have is simply not drawn.
+ * For a one-storey house `heights.ground` runs to the top of its roof slab
+ * and `heights.upper` is left out. The grid may have no axes either way.
+ */
+export interface SheetPlan {
+  readonly heights: Omit<Plan['heights'], 'upper' | 'parapet'> & Partial<Pick<Plan['heights'], 'upper' | 'parapet'>>;
+  readonly column: number;
+  readonly grid: Plan['grid'];
+  readonly ground: Level;
+  readonly upper?: Level;
+  readonly blade?: Plan['blade'];
+  readonly canopy?: Rect;
+  readonly galeria?: Rect;
+  readonly terrace?: Plan['terrace'];
+}
+
 export type LevelId = 'ground' | 'upper';
 
 /** Height of the horizontal cut a plan is drawn at, above its floor. */
@@ -193,16 +219,83 @@ export function contains(outer: Rect, inner: Rect) {
   );
 }
 
+/** A straight edge between two plan points. */
+export type Segment = readonly [Point, Point];
+
+/** The distinct values, ascending; values closer than EPS count as one. */
+function stations(values: readonly number[]): number[] {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted.filter((value, i) => i === 0 || value - sorted[i - 1] > EPS);
+}
+
+/** The grid the rects' edges cut the plane into, and whether the rects cover each of its cells. */
+function coverGrid(rects: readonly Rect[]) {
+  const xs = stations(rects.flatMap((rect) => rect.x));
+  const zs = stations(rects.flatMap((rect) => rect.z));
+  const cells = xs.slice(1).map((x1, i) => {
+    const cx = (xs[i] + x1) / 2;
+    return zs.slice(1).map((z1, j) => {
+      const cz = (zs[j] + z1) / 2;
+      return rects.some((rect) => cx > rect.x[0] && cx < rect.x[1] && cz > rect.z[0] && cz < rect.z[1]);
+    });
+  });
+  /** Outside the grid nothing is covered. */
+  const covered = (i: number, j: number) => cells[i]?.[j] ?? false;
+  return { xs, zs, covered };
+}
+
+/** Runs of equal, non-zero marks along a line of cells, from station to station. */
+function runs(marks: readonly number[], at: readonly number[]): Range[] {
+  const found: Range[] = [];
+  for (let start = 0, k = 1; k <= marks.length; k++) {
+    if (k < marks.length && marks[k] === marks[start]) continue;
+    if (marks[start] !== 0) found.push([at[start], at[k]]);
+    start = k;
+  }
+  return found;
+}
+
+/**
+ * The boundary of the rects' union: its outer edge and the edge of any hole
+ * in it, never a seam where two rects meet. Collinear pieces of an edge are
+ * merged while the floor stays on the same side of it.
+ */
+export function outlineEdges(rects: readonly Rect[]): Segment[] {
+  const { xs, zs, covered } = coverGrid(rects);
+  const edges: Segment[] = [];
+  // Along each line of the grid a cell side is an edge where the cells on either side differ;
+  // the mark's sign says which side the floor is on.
+  zs.forEach((z, j) => {
+    const marks = xs.slice(1).map((_, i) => Number(covered(i, j)) - Number(covered(i, j - 1)));
+    for (const [a, b] of runs(marks, xs)) edges.push([[a, z], [b, z]]);
+  });
+  xs.forEach((x, i) => {
+    const marks = zs.slice(1).map((_, j) => Number(covered(i, j)) - Number(covered(i - 1, j)));
+    for (const [a, b] of runs(marks, zs)) edges.push([[x, a], [x, b]]);
+  });
+  return edges;
+}
+
+/** The area the rects cover together, what they share counted once. */
+export function unionArea(rects: readonly Rect[]): number {
+  const { xs, zs, covered } = coverGrid(rects);
+  let sum = 0;
+  for (let i = 0; i < xs.length - 1; i++) {
+    for (let j = 0; j < zs.length - 1; j++) if (covered(i, j)) sum += (xs[i + 1] - xs[i]) * (zs[j + 1] - zs[j]);
+  }
+  return sum;
+}
+
 /** Floor and ceiling of a level, as heights above the ground the house stands on. */
-export function levelHeights(plan: Plan, level: LevelId) {
+export function levelHeights(plan: SheetPlan, level: LevelId) {
   const { slab, ground, upper } = plan.heights;
-  return level === 'ground'
-    ? { floor: slab, ceiling: ground - slab, nivel: 0 }
-    : { floor: ground, ceiling: ground + upper - slab, nivel: ground - slab };
+  if (level === 'ground') return { floor: slab, ceiling: ground - slab, nivel: 0 };
+  if (upper === undefined) throw new Error('This plan gives no height for an upper floor (heights.upper).');
+  return { floor: ground, ceiling: ground + upper - slab, nivel: ground - slab };
 }
 
 /** The opening's vertical extent above its floor, given the room's height. */
-export function openingHeights(opening: Opening, plan: Plan, clear: number): Range {
+export function openingHeights(opening: Opening, plan: SheetPlan, clear: number): Range {
   switch (opening.type) {
     case 'door':
       return [0, opening.head ?? plan.heights.door];
@@ -216,7 +309,7 @@ export function openingHeights(opening: Opening, plan: Plan, clear: number): Ran
 }
 
 /** Whether the plan's cut passes through the opening (a high window stays above it). */
-export const isCut = (opening: Opening, plan: Plan, clear: number) => {
+export const isCut = (opening: Opening, plan: SheetPlan, clear: number) => {
   const [bottom, top] = openingHeights(opening, plan, clear);
   return bottom < CUT_HEIGHT && top > CUT_HEIGHT;
 };
@@ -246,7 +339,7 @@ function solidRuns(wall: Wall, holes: Range[]): Range[] {
 }
 
 /** What the plan's cut finds solid in a wall: the poché. */
-export function cutPieces(wall: Wall, plan: Plan, clear: number): Rect[] {
+export function cutPieces(wall: Wall, plan: SheetPlan, clear: number): Rect[] {
   if (wall.kind === 'glazing') return [];
   const holes = (wall.openings ?? []).filter((opening) => isCut(opening, plan, clear)).map((opening) => openingSpan(wall, opening));
   return solidRuns(wall, holes).map(([a, b]) => slice(wall, a, b));
@@ -431,6 +524,12 @@ function rectStroke(rect: Rect, ink: Ink, weight: Weight, dash?: Dash): Stroke {
 
 const line = (ink: Ink, weight: Weight, a: Point, b: Point, dash?: Dash): Stroke => ({ ink, weight, points: [a, b], dash });
 
+/** A floor's edge, seen beyond the cut: its slab, or its footprint's outline, so an L is not closed across its garden. */
+function floorEdge(level: Level, dash?: Dash): Stroke[] {
+  if (!level.footprint) return [rectStroke(level.slab, 'line', 'beyond', dash)];
+  return outlineEdges(level.footprint).map(([a, b]) => line('line', 'beyond', a, b, dash));
+}
+
 /** A dimension string: a line with a tick at every station and each span written above it. */
 function dimensionString(drawing: PlanDrawing, stations: number[], along: 'x' | 'z', at: number, reach: number) {
   const point = (s: number, o: number): Point => (along === 'x' ? [s, o] : [o, s]);
@@ -458,6 +557,19 @@ function dimensionString(drawing: PlanDrawing, stations: number[], along: 'x' | 
       align: 'center',
       quarter: along === 'z',
     });
+  }
+}
+
+/**
+ * Dimension strings stacked outwards from `at`, 0.45 m apart. One with fewer
+ * than two stations measures nothing: it is left out and the next string
+ * takes its row.
+ */
+function dimensionStrings(drawing: PlanDrawing, along: 'x' | 'z', at: number, strings: { stations: number[]; reach: number }[]) {
+  for (const { stations, reach } of strings) {
+    if (stations.length < 2) continue;
+    dimensionString(drawing, stations, along, at, reach);
+    at += 0.45;
   }
 }
 
@@ -597,7 +709,7 @@ function fixtureStrokes(drawing: PlanDrawing, fixture: Fixture) {
   }
 }
 
-function openingStrokes(drawing: PlanDrawing, wall: Wall, opening: Opening, plan: Plan, clear: number) {
+function openingStrokes(drawing: PlanDrawing, wall: Wall, opening: Opening, plan: SheetPlan, clear: number) {
   const alongX = runsAlongX(wall);
   const [a, b] = openingSpan(wall, opening);
   const across = alongX ? wall.z : wall.x;
@@ -777,16 +889,40 @@ export interface SheetFrame {
 }
 
 /**
- * The ground floor plan as a drafted sheet: walls cut at 1.20 m, what is
- * seen below the cut, the upper floor dashed in projection, the grid,
- * dimension strings, room names with their areas and levels, the north
- * point and a graphic scale.
+ * What a sheet's notes are placed around: the floors, the galería and, along
+ * x, the blade. The blade's wings and the canopy, which reach past the house
+ * north and south, stay out: the street-side bubbles clear them, and the
+ * garden-side strings step past the blade's north wing on their own.
  */
-export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'ground'): PlanDrawing {
+export function sheetBounds(plan: SheetPlan): Rect {
+  const floors = [plan.ground.slab, ...(plan.upper ? [plan.upper.slab] : []), ...(plan.galeria ? [plan.galeria] : [])];
+  const xs = [...floors.flatMap((rect) => rect.x), ...(plan.blade?.x ?? [])];
+  const zs = floors.flatMap((rect) => rect.z);
+  return { x: [Math.min(...xs), Math.max(...xs)], z: [Math.min(...zs), Math.max(...zs)] };
+}
+
+/** Plan coordinates to the plot's for a sheet: what it bounds, centred on the plot, which is where the site puts the main house. */
+export function sheetOffset(plan: SheetPlan) {
+  const [x, z] = centre(sheetBounds(plan));
+  return { x: -x, z: -z };
+}
+
+/**
+ * A floor plan as a drafted sheet: walls cut at 1.20 m, what is seen below
+ * the cut, the upper floor dashed in projection, the grid, dimension
+ * strings, room names with their areas and levels, the north point and a
+ * graphic scale. A part the house does not have (an upper floor, the blade,
+ * the canopy, the galería) is left off, and its notes and strings with it.
+ */
+export function planDrawing(plan: SheetPlan, frame: SheetFrame, levelId: LevelId = 'ground'): PlanDrawing {
   const level = plan[levelId];
+  if (!level) throw new Error(`This plan has no ${levelId} floor.`);
   const { floor, ceiling, nivel } = levelHeights(plan, levelId);
   const clear = ceiling - floor;
   const drawing: PlanDrawing = { poche: [], hatch: [], strokes: [], arcs: [], solids: [], circles: [], labels: [] };
+  const { blade, canopy, galeria } = plan;
+  /** The floor over this one, seen dashed in projection. */
+  const above = levelId === 'ground' ? plan.upper : undefined;
 
   // What the plan cuts: walls, the blade and the columns.
   for (const wall of level.walls) {
@@ -794,46 +930,48 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
     (wall.kind === 'concrete' ? drawing.poche : drawing.hatch).push(...pieces);
     for (const opening of wall.openings ?? []) openingStrokes(drawing, wall, opening, plan, clear);
   }
-  drawing.poche.push({ x: plan.blade.x, z: plan.blade.z });
+  if (blade) drawing.poche.push({ x: blade.x, z: blade.z });
   const half = plan.column / 2;
   for (const [x, z] of level.columns) drawing.poche.push({ x: [x - half, x + half], z: [z - half, z + half] });
 
   // What is seen below the cut: the slab edge, the galería paving, the stair, the rails, the fittings.
-  drawing.strokes.push(rectStroke(level.slab, 'line', 'beyond'));
-  if (levelId === 'ground') drawing.strokes.push(rectStroke(plan.galeria, 'line', 'beyond'));
-  if (level.stair) stairStrokes(drawing, level.stair, levelHeights(plan, 'upper').floor - floor);
+  drawing.strokes.push(...floorEdge(level));
+  if (levelId === 'ground' && galeria) drawing.strokes.push(rectStroke(galeria, 'line', 'beyond'));
+  // The stair climbs to the upper floor, which stands the ground storey's height up.
+  if (level.stair) stairStrokes(drawing, level.stair, plan.heights.ground - floor);
   for (const rail of level.rails ?? []) drawing.strokes.push(rectStroke(rail, 'line', 'thin'));
   for (const fixture of level.fixtures) fixtureStrokes(drawing, fixture);
 
   // Above the cut, dashed: the upper floor over the ground floor, its cantilever, and the canopy over the front door.
   // From the upper floor the canopy is seen below.
-  if (levelId === 'ground') drawing.strokes.push(rectStroke(plan.upper.slab, 'line', 'beyond', 'dashed'));
-  drawing.strokes.push(rectStroke(plan.canopy, 'line', 'beyond', levelId === 'ground' ? 'dashed' : undefined));
+  if (above) drawing.strokes.push(...floorEdge(above, 'dashed'));
+  if (canopy) drawing.strokes.push(rectStroke(canopy, 'line', 'beyond', levelId === 'ground' ? 'dashed' : undefined));
 
-  if (levelId === 'ground') {
+  if (above) {
     drawing.labels.push({
       ink: 'note',
-      at: [plan.upper.slab.x[1] - 0.25, plan.upper.slab.z[0] + 0.5],
+      at: [above.slab.x[1] - 0.25, above.slab.z[0] + 0.5],
       text: `PROYECCIÓN LOSA P. ALTA · POSTESADA e=${fmt(plan.heights.structure)}`,
       size: TEXT.small,
       align: 'right',
     });
   }
   // The blade's note on the street side, past its south wing and the canopy, clear of the first axis.
-  const { blade } = plan;
-  drawing.labels.push({
-    ink: 'note',
-    at: [plan.grid.x[0].at + 0.3, blade.z[0] - 0.1],
-    text: `MURO H° VISTO e ${fmt(length(blade.x))} · h +${fmt(blade.height)}`,
-    size: TEXT.small,
-    align: 'left',
-  });
+  if (blade) {
+    drawing.labels.push({
+      ink: 'note',
+      at: [(plan.grid.x[0]?.at ?? blade.x[1]) + 0.3, blade.z[0] - 0.1],
+      text: `MURO H° VISTO e ${fmt(length(blade.x))} · h +${fmt(blade.height)}`,
+      size: TEXT.small,
+      align: 'left',
+    });
+  }
 
   // The grid: dash-dot axes through the columns, numbered in bubbles on the street side,
   // lettered at the east end, clear of the title block in the front corner. On the garden
   // side the axes run out to the dimension strings, which clear the blade's north wing.
   const { bounds } = frame;
-  const garden = Math.max(bounds.z[1], blade.z[1]) + 0.15;
+  const garden = Math.max(bounds.z[1], blade?.z[1] ?? bounds.z[1]) + 0.15;
   const bubble = 0.36;
   const xAxisEnd = bounds.z[0] - 2.3;
   const zAxisEnd = bounds.x[1] + 1.75;
@@ -848,20 +986,31 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
     drawing.labels.push({ ink: 'note', at: [zAxisEnd, axis.at + 0.15], text: axis.id, size: TEXT.axis, align: 'center' });
   }
 
-  // Dimension strings, three deep on the garden side and on the east end: axis to axis,
-  // then face to face (the bar and its cantilever), then overall.
+  // Dimension strings, up to three deep on the garden side and on the east end: axis to axis,
+  // then face to face (the bar and its cantilever), then overall. Without an upper floor that
+  // reaches past the ground floor, face to face would only repeat the overall, and is left out.
   const { ground, upper } = plan;
-  const west = Math.min(ground.slab.x[0], upper.slab.x[0]);
-  const east = Math.max(ground.slab.x[1], upper.slab.x[1]);
-  const front = Math.max(ground.slab.z[1], upper.slab.z[1]);
-  dimensionString(drawing, [...plan.grid.x.map((axis) => axis.at), east], 'x', garden + 0.25, 0.25);
-  dimensionString(drawing, [...new Set([ground.slab.x[0], ground.slab.x[1], upper.slab.x[1]])], 'x', garden + 0.7, 0.3);
-  dimensionString(drawing, [west, east], 'x', garden + 1.15, 0.25);
-  dimensionString(drawing, plan.grid.z.map((axis) => axis.at), 'z', bounds.x[1] + 0.35, 0.3);
-  dimensionString(drawing, [...new Set([ground.slab.z[0], upper.slab.z[1], ground.slab.z[1]])], 'z', bounds.x[1] + 0.8, 0.25);
-  dimensionString(drawing, [Math.min(ground.slab.z[0], upper.slab.z[0]), front], 'z', bounds.x[1] + 1.25, 0.25);
+  const slabs = upper ? [ground.slab, upper.slab] : [ground.slab];
+  const west = Math.min(...slabs.map((slab) => slab.x[0]));
+  const east = Math.max(...slabs.map((slab) => slab.x[1]));
+  const south = Math.min(...slabs.map((slab) => slab.z[0]));
+  const front = Math.max(...slabs.map((slab) => slab.z[1]));
+  const faces = (stations: number[]) => {
+    const distinct = [...new Set(stations)];
+    return distinct.length > 2 ? distinct : [];
+  };
+  dimensionStrings(drawing, 'x', garden + 0.25, [
+    { stations: [...plan.grid.x.map((axis) => axis.at), east], reach: 0.25 },
+    { stations: faces([ground.slab.x[0], ground.slab.x[1], upper?.slab.x[1] ?? east]), reach: 0.3 },
+    { stations: [west, east], reach: 0.25 },
+  ]);
+  dimensionStrings(drawing, 'z', bounds.x[1] + 0.35, [
+    { stations: plan.grid.z.map((axis) => axis.at), reach: 0.3 },
+    { stations: faces([ground.slab.z[0], upper?.slab.z[1] ?? front, ground.slab.z[1]]), reach: 0.25 },
+    { stations: [south, front], reach: 0.25 },
+  ]);
   // On the west, the blade and how far it runs past the house at each end.
-  dimensionString(drawing, [blade.z[0], ground.slab.z[0], ground.slab.z[1], blade.z[1]], 'z', blade.x[0] - 1.0, -0.75);
+  if (blade) dimensionString(drawing, [blade.z[0], ground.slab.z[0], ground.slab.z[1], blade.z[1]], 'z', blade.x[0] - 1.0, -0.75);
 
   // Room names, with the area under them and the level where the floor sets one. A name wider
   // than its room, or running into its fittings, is abbreviated, and an area that does not fit is left off.

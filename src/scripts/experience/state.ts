@@ -52,6 +52,11 @@ export function createState() {
     tiltY: 0,
     lift: 0,
     ctaGrow: 0,
+    /**
+     * How far the camera has left the timeline's view for the other projects' (projects.ts), 0..1.
+     * Blended over the timeline's values, so the two never fight; the scroll is stopped meanwhile.
+     */
+    aside: 0,
   };
 }
 

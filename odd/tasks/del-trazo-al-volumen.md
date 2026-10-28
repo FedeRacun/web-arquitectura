@@ -66,7 +66,9 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T15 Carport and grill under the cantilever | S26 | inline | discarded (user decision) | tried uncommitted and shown, see L42; restored to `4614553` |
 | T16 East glass set back 0.90 m | S26 | inline | done | `4614553`, see L40; test 76/76 (RED observed first), check 0 errors, budget 198.5 KB |
 | T17 Process copy: stages, layer glosses, closing, title; README deploy section | S27 | inline (copy proposed by one marketing reviewer sub-agent, read-only) | done | `2f6078d` (copy), `7e790f1` (deploy docs), see L48; test 76/76, check 0 errors, budget 198.6 KB; no unit RED (copy, CSS and camera framing), checked in captures |
-| T18 Other projects: optional plan levels, three audited plans, the side slide | S28 | inline, plus three parallel writers for the plan configs (disjoint files) | pending | after T17's PR is merged |
+| T18 Plan sheets for any house: optional upper floor, blade, canopy, galería and terrace in the drawing; a dev-only sheet viewer | S28 | delegated writer (Writer trigger: parallel with T20 on disjoint files; parent context near the backstop) | done | see L50 |
+| T19 Three project plans, each grounded on a published modern house and audited by the architect reviewer | S28 | three parallel delegated writers, one file each (`src/config/projects/<id>.ts`), after T18 | done | see L53 |
+| T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | done | see L51 |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
 
@@ -151,3 +153,104 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
   - **Docs:** README (intro, layer words, a new Deploy section), DESIGN.md (Note and Stage roles, measures, six placements, the named rule, layer copy), PRODUCT.md (principle on process copy) and `.impeccable/design.json`.
   - **Checks:** test 76/76, check 0 errors, budget 198.6 KB gzip.
   - **Risk:** item 6. Whether text clears the 3D is checked only by the captures, and the framing shifts move every scene from scene 1 to the closing.
+- **L49 (2026-10-28, user, verbatim):** "Sí, pusheá feat/textos-proceso y abrí el PR 1 contra main." Opened https://github.com/FedeRacun/web-arquitectura/pull/1. Asked about Auto-fix; answer: "Not now". Then: "mergealo y vamos con el PR2".
+  - **Before merging:** the PR's only check, "Workers Builds: web-arquitectura", had failed. It started and completed in the same second (17:33:42Z). Its output carries no log, and the built-in browser has no Cloudflare session, so the log was not read. `pnpm verify` is green locally and `main` had no build to compare, so the failure points at the Cloudflare setup rather than the code. It is reported to the user, not fixed here.
+  - **Merge:** PR 1 merged with a merge commit, `43f8979`, which keeps the work-unit commits.
+  - **PR 2:** `feat/otros-proyectos` is cut from `main` at `43f8979`. T18 and T20 run as parallel writers on disjoint files, the parent owning git; T19 follows T18.
+- **L50 (2026-10-28, T18 evidence):**
+  - **Change:** `plan.ts` exports `SheetPlan`. In it, `upper`, `blade`, `canopy`, `galeria`, `terrace`, `heights.upper` and `heights.parapet` are optional, and `Plan` stays the main house's full type, assignable to it. The file also exports `sheetBounds` and `sheetOffset`.
+  - **Drawing:** `planDrawing`, `paintPlan` and `createPlanSheet` take `SheetPlan` and leave out each absent part with its notes and dimension strings. `createPlanSheet` keeps its signature. `planSheet.ts` exports `sheetLayout`.
+  - **Viewer:** a dev-only viewer at `/dev/<id>` (`src/pages/dev/`). `getStaticPaths` returns `[]` outside dev. The client code loads as an inline module, because a processed script would be bundled into `dist/_astro` even with no page emitted.
+  - **RED:** 10 tests failed before the fix (`Cannot read properties of undefined (reading 'x')`, `sheetBounds is not a function`).
+  - **GREEN:** one-storey fixture `cottage`, 8 new tests, and a pin of the main house's counts, labels and strings. The main house's full-drawing fingerprint is the same before and after (`951bd2c2`, `ce7d3559`).
+  - **Checks:**
+    - Writer: test 99/99, check 0 errors, build with no `/dev` in `dist`.
+    - Parent spot check: `plan.test.ts` 37/37.
+  - **For T19:**
+    - `Project.plan` is typed `SheetPlan`.
+    - Project sheets are placed with `sheetOffset`.
+    - The viewer showed a short "0,15" span where the last axis sits on the east wall. This is a drawing rule that already applies to the main house, so it is left as is.
+  - **Risk:** item 3. It changes shared drawing code the main house uses. Covered by the fingerprint and the pinned test.
+  - **Commit:** `6a4715e`.
+  - **Assessment:** medium (`executable_change` on the dev page), `under_budget`. RDD is off, so the writer's own verification plus the parent spot check close it.
+- **L51 (2026-10-28, T20 evidence):**
+  - **Controller:** `projects.ts` holds the pure parts and the view controller.
+    - The pure parts are the row layout, the camera blend, the focus framing and the `navigate` reducer, with modes `closed | list | focus`.
+    - The controller builds the sheets lazily (40 px/m desktop, 24 mobile), moves the camera, picks, and handles keys, swipe, the reduced-motion veil and the labels.
+  - **Camera:** `state.aside` (0..1) blends the timeline camera into the projects view. `camera.ts` exports `poseCamera`, and its rig math is unchanged.
+  - **Scroll:** `scroll.ts` gains `reach()`. Under reduced motion, `stop()`/`start()` hold the page with `overflow: clip`.
+  - **Pointer:** `pointer.ts` gains `paused()`, so the model lift and the layer hover stand down while the view is open.
+  - **Markup:** `OtherProjects.astro` is a real `nav` list, which reads with no JS or WebGL. The mesa scene gets the "Ver otros proyectos" button with an authored SVG arrow.
+  - **Data:** `src/config/projects.ts` (`Project.plan: SheetPlan`) and three PLACEHOLDER files that reuse the main plan. They are wired from `architect.ts`. README and DESIGN.md are updated.
+  - **Writer's choices:**
+    - In focus mode the back control reads "Volver a la lista".
+    - The pager is labelled "Proyecto anterior" / "Proyecto siguiente".
+    - The label is "Casa {name}", so `name` is stored without "Casa".
+    - Focus goes to the heading on open.
+  - **RED:** `projects.test.ts` failed with the module missing; 12 tests after.
+  - **Checks:**
+    - Writer: test 99/99, check 0, build, budget 202.0 KB gzip.
+    - Captured flows at 1440, at 375 and under reduced motion: the scroll position is kept, Escape goes focus → list → closed, focus returns to the button, and one wheel step after closing reaches the closing scene.
+    - Parent: `pnpm check` 0 errors; looked at the 1440 mesa, list and focus captures and the 375 sheet.
+  - **Not verified:** 60 fps on a real device with the row open; the scrollbar width under `overflow: clip` on browsers with classic scrollbars.
+  - **Risk:** item 4. Async ordering between the camera tweens, `scroll.stop()`/`start()` and the scrub. Covered by the reducer tests and the captured flows.
+  - **Commit:** `bc35f81`.
+  - **Assessment:** medium (`executable_change`), `under_budget`. The parent raised it to high for item 4, so an independent verifier probes it in a scratch clone.
+- **L52 (2026-10-28, T19 references and prerequisite):**
+  - **References.** They are cited, not traced. Values marked ≈ were scaled off the published drawings; only B's plan has a scale bar.
+    - **A, L-shaped, one storey:** Casa en San Carlos, Marcelo Del Torto + Torrado Arquitectos, 2016, 350 m². https://www.archdaily.com/es/792073/casa-en-san-carlos-marcelo-del-torto-plus-plus-torrado-arquitectos
+    - **B, narrow lot, two storeys:** Casa MeMo, BAM! arquitectura, San Isidro, 2016, 215 m², lot ≈8.66 × 47 m. https://www.archdaily.com/es/870790/casa-memo-bam-arquitectura
+    - **C, around a patio, one storey:** Patio con Casa, Lescano-Puente arqs, City Bell, 2021, 180 m². https://www.archdaily.com/969663/patio-with-a-house-lescano-puente-arqs
+  - **Prerequisite.** `Level.slab` is a single rect, stroked as the slab edge, so an L or a ring around a patio would draw an edge across its own garden. The T18 writer was resumed for this:
+    - an optional `footprint` (a union of rects) whose outline is drawn without seams;
+    - a shared harness, `src/config/projects.test.ts`, with the generic plan rules moved into `planChecks.ts`, plus a sheet-fits rule and an area within ±10% rule.
+  - **Order.** B is rectangular, so its writer starts now. A and C start once the footprint lands.
+- **L53 (2026-10-28, T19 and T20 closing evidence):**
+  - **Footprint:** `1a1d956`, written by the resumed T18 writer.
+    - RED: 6 failures (`outlineEdges is not a function`; the slab rect drawn across the garden).
+    - The main-house fingerprint is unchanged.
+    - The generic rules moved to `planChecks.ts`; the harness is `src/config/projects.test.ts`, 11 rules per project.
+  - **Area rule:** `c3a3db5`. It counted a semicovered room on the floor 1.5 times. RED: expected 100 to be close to 92.
+  - **Houses:** `97cb92d`.
+    - **A, en L:** 254 m², one storey, footprint L, 0.40 slab, 1.10 north eave. Grounded on Casa en San Carlos.
+    - **B, Entre Medianeras:** 248 m², two storeys on 8.70 m between party walls, inner patio, 2.40 cantilever over the galería. Grounded on Casa MeMo.
+    - **C, Patio:** 256 m², one storey ringed around a 9.30 × 8.40 patio. Grounded on Patio con Casa.
+    - `place` and `status` stay `PLACEHOLDER`.
+  - **Architect review, one round per house, findings applied:**
+    - **A:**
+      - wc clearances and the front door's hinge (blockers);
+      - slab 0.40, eave 1.10, narrower west windows;
+      - kitchen, labels, a 26 × 32 sheet, 3-leaf sliders.
+    - **B:**
+      - transposed to street south and garden north (blocker: north is fixed at +z, so the party walls faced north and south);
+      - the suite rebuilt with a vestidor (blocker);
+      - terrace sliders became windows; rails on the cantilever;
+      - the idle columns removed for one 8.10 m glazing run;
+      - an opening kitchen slider; shafts; wc axes; the stair rail.
+    - **C:**
+      - columns under the entry glass and the carport edge (blockers);
+      - the kitchen moved back to the entry end;
+      - a laundry door to the side yard, the bed clearance, a shaft for the core;
+      - slab 0.35, wc axes, the bedroom hierarchy.
+  - **T20 verifier:**
+    - **Round 1:** all S28 clauses pass except two blockers, B1 (hidden pager in the tab order) and B2 (a gesture during the glide back swallowed).
+    - **Correction `1349f0c`:** fixed both, plus A3, A5 and A2. A held gesture reuses `scroll.ts` `pending` through `hold()`.
+    - **Recheck:** all four pass. One regression, focus on open landing on the body, came from the title's delayed `visibility` transition.
+    - **Fix `cd72bc3`:** made in the parent. Confirmed in the browser with the heading focused at 0 and 400 ms and Escape back on the button, and again in the final captures.
+  - **Checks:**
+    - `pnpm verify`: test 150/150, check 0, build with no `/dev` pages, budget 206.5 KB gzip.
+    - Final captures of the row, focus, mobile and the glide back with the real plans: `scratchpad/final/`.
+  - **Assessment:**
+    - `1a1d956` and `97cb92d` are data and drawing; the harness covers them.
+    - Risk item 3 for the shared drawing: the main house fingerprint is unchanged.
+    - Risk item 4 for T20, verified independently.
+  - **Open, for the user** (shared drawing code or product decisions, not applied):
+    - High windows (sill 1.5–1.6) are dashed in light ink over the light poché, so they disappear on every sheet, the approved main house included.
+    - The axis string's last "0,15" span is crossed by its own ticks.
+    - On a north–south stair (house B) the riser note sits over the treads.
+    - The upper-slab projection note crosses partitions on B.
+    - East dimension text sits on an east wall.
+    - House B has no car space and sits on the street line.
+    - House C's galería lets little winter sun into the living room; ending it at axis 3 is the massing alternative.
+    - In focus mode the next sheet and its label peek in at the right edge.
+  - **Not verified:** 60 fps on a real device with the row open; screen readers.

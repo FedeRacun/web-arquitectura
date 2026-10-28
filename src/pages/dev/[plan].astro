@@ -1,0 +1,81 @@
+---
+import { Font } from 'astro:assets';
+import { devSheets } from './_sheets';
+
+/*
+ * Dev only: each plan sheet at the site's full resolution, bone on the
+ * plot's board, to audit the drawing by eye (/dev/main, /dev/<project id>).
+ * Outside `astro dev` there are no paths, so a build emits no page here, and
+ * the painter is loaded from the dev server as an inline module, so a build
+ * bundles none of it either.
+ */
+
+export function getStaticPaths() {
+  if (!import.meta.env.DEV) return [];
+  return devSheets().map((sheet) => ({ params: { plan: sheet.id } }));
+}
+
+const sheets = devSheets();
+const sheet = sheets.find((candidate) => candidate.id === Astro.params.plan)!;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{`Sheet · ${sheet.name}`}</title>
+    <Font cssVariable="--font-dm-sans" />
+    <style is:global>
+      body {
+        margin: 0;
+        padding: 1.5rem;
+        background: #141210;
+        color: #ede6da;
+        font: 16px/1.5 var(--font-dm-sans), sans-serif;
+      }
+      a {
+        color: inherit;
+      }
+      a[aria-current] {
+        color: #b8743a;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.25rem;
+      }
+      nav ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 1.5rem;
+        margin: 0.5rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      canvas {
+        display: block;
+        margin-top: 1.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>{sheet.name}</h1>
+    <p>Plot {sheet.site.width} × {sheet.site.depth} m · {sheet.plan.upper ? 'two storeys' : 'one storey'}</p>
+    <nav aria-label="Plan sheets">
+      <ul>
+        {
+          sheets.map((other) => (
+            <li>
+              <a href={`/dev/${other.id}`} aria-current={other.id === sheet.id ? 'page' : undefined}>
+                {other.name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <div data-sheet={sheet.id}></div>
+    <script is:inline type="module" src="/src/pages/dev/_viewer.ts"></script>
+  </body>
+</html>
