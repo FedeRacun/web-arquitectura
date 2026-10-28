@@ -69,13 +69,16 @@ from these numbers; the code stays as it is.
 | `whatsapp.message` | The text the chat starts with |
 | `building.site` | The plot drawn in scene 1 and seen from above in scene 8 (metres) |
 | `building.plan` | The house itself, in [`src/config/plan.ts`](src/config/plan.ts): both floor plans (walls, doors, windows, columns, the stair, rooms, fittings), the grid, the heights, the blade wall that closes the west side and the canopy it carries over the front door, the galería and the terrace. Scene 2 drafts the ground floor plan from it and scene 3 raises every wall, opening and floor from the same numbers |
-| `projects` | The studio's other houses, in [`src/config/projects.ts`](src/config/projects.ts), one file each under `src/config/projects/`: name (the label reads "Casa {name}"), place, area, status (`Construida`, `En obra` or `Proyecto`), the plot and its floor plans in the same terms as `building.plan` (the upper floor, blade, canopy, galería and terrace may be left out). "Ver otros proyectos" in scene 7 drafts them in a row on the table |
+| `projects` | The studio's other houses, in [`src/config/projects.ts`](src/config/projects.ts), one file each under `src/config/projects/`: name (the label reads "Casa {name}"), place, area, status (`Construida`, `En obra` or `Proyecto`), the sheet the plan is drafted on, and its floor plans in the same terms as `building.plan` (the upper floor, blade, canopy, galería and terrace may be left out; an L-shaped or courtyard floor gives its `footprint`). "Ver otros proyectos" in scene 7 drafts them in a row on the table. [`projects.test.ts`](src/config/projects.test.ts) holds every plan to the rules the main house passes, checks the drawing fits its sheet and the stated area matches the plan within 10%; `pnpm dev` shows each sheet full size at `/dev/<id>` |
 | `materials.*` | Concrete, wood, glass, the warm interior light and the balsa of the model |
 
 **Before publishing:** `whatsapp.number` is a placeholder
 (`+54 9 11 0000-0000`). Replace it with the real number. The three
-`projects` are placeholders too: invented names, places, areas and statuses
-over a copy of the main house's plan, each marked `PLACEHOLDER` in its file.
+`projects` are demonstration houses: original plans of three typologies (an
+L-shaped house, a house between party walls, a house around a patio), each
+grounded on a published house cited in its file and audited by an architect.
+Their places and statuses are marked `PLACEHOLDER`: replace each house with
+one of the studio's own, or at least its place and status.
 
 ### Fonts
 
