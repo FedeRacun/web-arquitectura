@@ -1,34 +1,45 @@
 import { describe, expect, it } from 'vitest';
+import { architect } from '../../../config/architect';
 import { plan } from '../../../config/plan';
+import { planOffset } from './params';
 import {
   area,
-  contains,
   cutPieces,
-  doorSwing,
-  labelBox,
   levelHeights,
-  openingHeights,
   openingSpan,
+  outlineEdges,
   overlaps,
   planDrawing,
   runsAlongX,
   sheetBounds,
   sheetOffset,
   slice,
-  stairGeometry,
   wallBlocks,
   type Level,
   type LevelId,
-  type Opening,
   type Plan,
   type PlanDrawing,
   type Point,
   type Rect,
-  type Room,
+  type Segment,
   type SheetPlan,
   type Wall,
 } from './plan';
-import { planOffset } from './params';
+import {
+  areaMatches,
+  clearHeights,
+  clearOf,
+  coveredArea,
+  labelsInRooms,
+  leavesClear,
+  notesApart,
+  onSheet,
+  onSlab,
+  openingsFit,
+  solidsApart,
+  stairComfort,
+} from './planChecks';
+import { sheetLayout } from './planSheet';
 
 const LEVELS: LevelId[] = ['ground', 'upper'];
 
@@ -112,94 +123,40 @@ const cottage: SheetPlan = {
 };
 /** The cottage centred on an 18 × 14 m plot. */
 const cottageFrame = { bounds: { x: [0, 12], z: [0, 8] }, sheet: { x: [-3, 15], z: [-3, 11] } } satisfies { bounds: Rect; sheet: Rect };
-const clearOf = (id: LevelId) => {
-  const { floor, ceiling } = levelHeights(plan, id);
-  return ceiling - floor;
-};
-const columnRects = (id: LevelId): Rect[] =>
-  plan[id].columns.map(([x, z]) => ({ x: [x - plan.column / 2, x + plan.column / 2], z: [z - plan.column / 2, z + plan.column / 2] }));
 
+// The rules every plan must pass (planChecks.ts), then the main house's own.
 describe('the plan data', () => {
   it('keeps every wall and column of a level apart, so no two solids overlap', () => {
-    for (const id of LEVELS) {
-      const solids: Rect[] = [...plan[id].walls, ...columnRects(id)];
-      for (let i = 0; i < solids.length; i++) {
-        for (let j = i + 1; j < solids.length; j++) expect(overlaps(solids[i], solids[j]), `${id} ${i}/${j}`).toBe(false);
-      }
-    }
+    expect(solidsApart(plan)).toEqual([]);
   });
 
   it('keeps every wall, column, room and stair on its slab', () => {
-    for (const id of LEVELS) {
-      const level = plan[id];
-      for (const rect of [...level.walls, ...columnRects(id), ...(level.stair ? [level.stair] : [])]) {
-        expect(contains(level.slab, rect)).toBe(true);
-      }
-      for (const room of level.rooms) {
-        const under = room.semicovered ? plan.upper.slab : level.slab;
-        expect(contains(under, room.rect), room.name).toBe(true);
-      }
-    }
+    expect(onSlab(plan)).toEqual([]);
   });
 
   it('fits every opening inside its wall without two openings sharing a span', () => {
-    for (const id of LEVELS) {
-      for (const wall of plan[id].walls) {
-        const run = runsAlongX(wall) ? wall.x : wall.z;
-        const spans = (wall.openings ?? []).map((opening) => openingSpan(wall, opening)).sort((a, b) => a[0] - b[0]);
-        spans.forEach(([a, b], i) => {
-          expect(a).toBeGreaterThanOrEqual(run[0] - 1e-9);
-          expect(b).toBeLessThanOrEqual(run[1] + 1e-9);
-          if (i > 0) expect(a).toBeGreaterThanOrEqual(spans[i - 1][1] - 1e-9);
-        });
-        for (const opening of wall.openings ?? []) {
-          const [bottom, top] = openingHeights(opening, plan, clearOf(id));
-          expect(top).toBeGreaterThan(bottom);
-          expect(top).toBeLessThanOrEqual(clearOf(id) + 1e-9);
-        }
-      }
-    }
+    expect(openingsFit(plan)).toEqual([]);
   });
 
   it('swings every door leaf clear of the other walls', () => {
-    for (const id of LEVELS) {
-      const walls = plan[id].walls;
-      for (const wall of walls) {
-        for (const opening of wall.openings ?? []) {
-          if (opening.type !== 'door') continue;
-          const { hinge, tip } = doorSwing(wall, opening);
-          const leaf: Rect = {
-            x: [Math.min(hinge[0], tip[0]) - 0.01, Math.max(hinge[0], tip[0]) + 0.01],
-            z: [Math.min(hinge[1], tip[1]) - 0.01, Math.max(hinge[1], tip[1]) + 0.01],
-          };
-          for (const other of walls) {
-            if (other === wall) continue;
-            expect(overlaps(leaf, other), `${id} door at ${opening.at}`).toBe(false);
-          }
-        }
-      }
-    }
+    expect(leavesClear(plan)).toEqual([]);
   });
 
   it('climbs one storey in comfortable steps, under an open stair well', () => {
-    const stair = plan.ground.stair!;
-    const floorToFloor = levelHeights(plan, 'upper').floor - levelHeights(plan, 'ground').floor;
-    const steps = stairGeometry(stair, floorToFloor);
-    expect(steps.rise * stair.risers).toBeCloseTo(floorToFloor, 10);
-    expect(steps.rise).toBeLessThanOrEqual(0.18);
-    expect(steps.tread).toBeGreaterThanOrEqual(0.27);
-    expect(steps.blondel).toBeGreaterThanOrEqual(0.6);
-    expect(steps.blondel).toBeLessThanOrEqual(0.65);
-    expect((plan.upper.voids ?? []).some((well) => contains(well, { x: stair.x, z: stair.z }))).toBe(true);
+    expect(stairComfort(plan)).toEqual([]);
   });
 
   it('gives each floor a slab with room for its build-up, without changing the storey height or the stair', () => {
     const { slab, structure } = plan.heights;
     expect(slab - structure).toBeGreaterThanOrEqual(0.1);
-    const ground = levelHeights(plan, 'ground');
-    const upper = levelHeights(plan, 'upper');
-    expect(upper.floor - ground.floor).toBeCloseTo(3.35, 10);
-    for (const level of [ground, upper]) expect(level.ceiling - level.floor).toBeGreaterThanOrEqual(2.6);
+    expect(levelHeights(plan, 'upper').floor - levelHeights(plan, 'ground').floor).toBeCloseTo(3.35, 10);
+    expect(clearHeights(plan)).toEqual([]);
+  });
+
+  it('covers the area of the published house it follows, 311 m², within 10%', () => {
+    // Ground 15 × 10.20, upper 17.10 × 8.40 less the stair well 5.19 × 1.10, and the galería at half.
+    expect(coveredArea(plan)).toBeCloseTo(153 + 143.64 - 5.709 + 55.44 / 2, 6);
+    expect(areaMatches(311, plan)).toEqual([]);
   });
 
   it('stacks the upper floor on the ground floor and cantilevers it past the east wall', () => {
@@ -288,7 +245,7 @@ describe('the drawn plan', () => {
   it('fills every concrete wall, the columns and the blade as poché, and hatches the partitions', () => {
     const concrete = plan.ground.walls.filter((wall) => wall.kind === 'concrete');
     const partitions = plan.ground.walls.filter((wall) => wall.kind === 'partition');
-    const cut = (walls: readonly Wall[]) => walls.flatMap((wall) => cutPieces(wall, plan, clearOf('ground')));
+    const cut = (walls: readonly Wall[]) => walls.flatMap((wall) => cutPieces(wall, plan, clearOf(plan, 'ground')));
     expect(drawing.poche.length).toBe(cut(concrete).length + plan.ground.columns.length + 1);
     expect(drawing.hatch).toEqual(cut(partitions));
   });
@@ -411,6 +368,91 @@ describe('the sheet of a house without the main house’s extras', () => {
   });
 });
 
+describe('the outline of a floor', () => {
+  /** Segments as unordered pairs, in a stable order, so two outlines compare whatever order they were traced in. */
+  const unordered = (segments: readonly (readonly Point[])[]) =>
+    segments
+      .map(([a, b]) => (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]) ? [a, b] : [b, a]))
+      .map(([a, b]) => `${a[0]},${a[1]} ${b[0]},${b[1]}`)
+      .sort();
+  const sides = ({ x, z }: Rect): Segment[] => [
+    [[x[0], z[0]], [x[1], z[0]]],
+    [[x[1], z[0]], [x[1], z[1]]],
+    [[x[0], z[1]], [x[1], z[1]]],
+    [[x[0], z[0]], [x[0], z[1]]],
+  ];
+
+  it('gives a single rect its four sides', () => {
+    const rect: Rect = { x: [0, 12], z: [0, 8] };
+    expect(unordered(outlineEdges([rect]))).toEqual(unordered(sides(rect)));
+  });
+
+  it('traces an L in six edges', () => {
+    const edges = outlineEdges([
+      { x: [0, 10], z: [0, 4] },
+      { x: [0, 4], z: [4, 10] },
+    ]);
+    expect(unordered(edges)).toEqual(
+      unordered([
+        [[0, 0], [10, 0]],
+        [[10, 0], [10, 4]],
+        [[4, 4], [10, 4]],
+        [[4, 4], [4, 10]],
+        [[0, 10], [4, 10]],
+        [[0, 0], [0, 10]],
+      ]),
+    );
+  });
+
+  it('traces a ring around a patio as its four outer edges and the patio’s four', () => {
+    const patio: Rect = { x: [4, 8], z: [3, 7] };
+    const edges = outlineEdges([
+      { x: [0, 12], z: [0, 3] },
+      { x: [0, 12], z: [7, 10] },
+      { x: [0, 4], z: [3, 7] },
+      { x: [8, 12], z: [3, 7] },
+    ]);
+    expect(unordered(edges)).toEqual(unordered([...sides({ x: [0, 12], z: [0, 10] }), ...sides(patio)]));
+  });
+
+  it('draws no seam where two pieces share a side', () => {
+    const edges = outlineEdges([
+      { x: [0, 5], z: [0, 4] },
+      { x: [5, 10], z: [0, 4] },
+    ]);
+    expect(unordered(edges)).toEqual(unordered(sides({ x: [0, 10], z: [0, 4] })));
+  });
+
+  it('strokes a floor with a footprint along its outline, not across its garden', () => {
+    const footprint: Rect[] = [
+      { x: [0, 12], z: [0, 4] },
+      { x: [0, 5], z: [4, 8] },
+    ];
+    const drawing = planDrawing({ ...cottage, ground: { ...cottage.ground, footprint } }, cottageFrame);
+    const seen = drawing.strokes.filter((stroke) => stroke.ink === 'line' && stroke.weight === 'beyond' && !stroke.dash);
+    expect(seen.filter((stroke) => stroke.closed)).toEqual([]);
+    const outline = unordered(outlineEdges(footprint));
+    expect(outline).toHaveLength(6);
+    expect(unordered(seen.map((stroke) => stroke.points))).toEqual(expect.arrayContaining(outline));
+  });
+
+  it('dashes an upper floor with a footprint along its outline in the ground floor plan', () => {
+    const frame = { bounds: sheetBounds(plan), sheet: { x: [-2.2, 23.8], z: [-3.9, 14.1] } } satisfies { bounds: Rect; sheet: Rect };
+    const footprint: Rect[] = [
+      { x: [4.5, 15], z: [0, 8.4] },
+      { x: [15, 21.6], z: [0, 5] },
+    ];
+    const drawing = planDrawing({ ...plan, upper: { ...plan.upper, footprint } }, frame);
+    const dashed = drawing.strokes.filter((stroke) => stroke.dash === 'dashed' && stroke.weight === 'beyond');
+    expect(unordered(dashed.map((stroke) => stroke.points))).toEqual(expect.arrayContaining(unordered(outlineEdges(footprint))));
+    // Nothing dashed where the slab's bounding rect runs past the footprint, and no closed rect but the canopy's.
+    expect(unordered(dashed.map((stroke) => stroke.points))).not.toContain('21.6,5 21.6,8.4');
+    expect(dashed.filter((stroke) => stroke.closed).map((stroke) => stroke.points)).toEqual([
+      [[plan.canopy.x[0], plan.canopy.z[0]], [plan.canopy.x[1], plan.canopy.z[0]], [plan.canopy.x[1], plan.canopy.z[1]], [plan.canopy.x[0], plan.canopy.z[1]]],
+    ]);
+  });
+});
+
 describe('the frame of a sheet', () => {
   it("bounds the main house as before: the blade's west face to the cantilever, the ground floor north to south", () => {
     expect(sheetBounds(plan)).toEqual({ x: [0, 21.6], z: [0, 10.2] });
@@ -428,64 +470,69 @@ describe('the frame of a sheet', () => {
   });
 });
 
-describe('the lettering of each plan', () => {
-  const frame = {
-    bounds: { x: [plan.blade.x[0], plan.upper.slab.x[1]], z: [plan.ground.slab.z[0], plan.ground.slab.z[1]] },
-    sheet: { x: [-2.2, 23.8], z: [-3.9, 14.1] },
-  } satisfies { bounds: Rect; sheet: Rect };
-
-  /** The square a door leaf sweeps, and whether a rect reaches into its quarter circle. */
-  const intoSwing = (rect: Rect, wall: Wall, opening: Extract<Opening, { type: 'door' }>) => {
-    const { hinge, tip, jamb, radius } = doorSwing(wall, opening);
-    const corner: Point = [tip[0] + jamb[0] - hinge[0], tip[1] + jamb[1] - hinge[1]];
-    const xs = [hinge[0], tip[0], jamb[0], corner[0]];
-    const zs = [hinge[1], tip[1], jamb[1], corner[1]];
-    const square: Rect = { x: [Math.min(...xs), Math.max(...xs)], z: [Math.min(...zs), Math.max(...zs)] };
-    const nearest = [0, 1].map((axis) => {
-      const range = axis === 0 ? rect.x : rect.z;
-      return Math.min(Math.max(hinge[axis], range[0]), range[1]) - hinge[axis];
-    });
-    return overlaps(rect, square) && Math.hypot(nearest[0], nearest[1]) < radius;
+describe('the rules a plan must pass, when it breaks them', () => {
+  const lShaped: SheetPlan = {
+    ...cottage,
+    ground: {
+      ...cottage.ground,
+      footprint: [
+        { x: [0, 12], z: [0, 4] },
+        { x: [0, 7], z: [4, 8] },
+      ],
+    },
   };
+
+  it('finds walls and rooms standing in the garden of an L', () => {
+    const problems = onSlab(lShaped);
+    expect(problems).toContain('ground: room Dormitorio is off the floor');
+    expect(problems.some((problem) => problem.startsWith('ground: wall x 11.7–12 z 0.3–7.7'))).toBe(true);
+  });
+
+  it('finds a footprint that does not fill its slab', () => {
+    const shrunk: SheetPlan = { ...cottage, ground: { ...cottage.ground, footprint: [{ x: [0, 12], z: [0, 7] }] } };
+    expect(onSlab(shrunk)).toContain('ground: the footprint spans x 0–12 z 0–7, the slab x 0–12 z 0–8');
+  });
+
+  it('measures a footprint by its union, less nothing for a floor without voids', () => {
+    expect(coveredArea(lShaped)).toBeCloseTo(12 * 4 + 7 * 4, 10);
+    expect(coveredArea(cottage)).toBeCloseTo(96, 10);
+  });
+
+  it('finds a stated area more than 10% off the plan', () => {
+    expect(areaMatches(96 * 1.1, cottage)).toEqual([]);
+    expect(areaMatches(120, cottage)).toEqual(['states 120 m², the plan covers 96 m² (±10%: 86.4–105.6)']);
+  });
+
+  it('finds a drawing that runs off a plot too small for it', () => {
+    const tight = { bounds: cottageFrame.bounds, sheet: { x: [-1, 13], z: [-1, 9] } } satisfies { bounds: Rect; sheet: Rect };
+    // The axis bubbles stand 2.30 m off the street side, past this sheet's edge.
+    const problems = onSheet(planDrawing(cottage, tight), tight.sheet);
+    expect(problems.some((problem) => problem.startsWith('circle at x -0.21–0.51 z -2.66–-1.94'))).toBe(true);
+  });
+});
+
+describe('the lettering of each plan', () => {
+  // The main house framed on its plot as the site frames it.
+  const { frame } = sheetLayout(plan, architect.building.site, sheetOffset(plan), 1);
 
   // The main house's two floors, and a one-storey house drawn on its own plot. Each sheet is drawn
   // inside its tests, so a plan that cannot be drawn fails them instead of the whole file.
-  const sheets: { name: string; level: Level; draw: () => PlanDrawing }[] = [
-    ...LEVELS.map((id) => ({ name: id, level: plan[id], draw: () => planDrawing(plan, frame, id) })),
-    { name: 'one-storey', level: cottage.ground, draw: () => planDrawing(cottage, cottageFrame) },
+  const sheets: { name: string; level: Level; sheet: Rect; draw: () => PlanDrawing }[] = [
+    ...LEVELS.map((id) => ({ name: id, level: plan[id], sheet: frame.sheet, draw: () => planDrawing(plan, frame, id) })),
+    { name: 'one-storey', level: cottage.ground, sheet: cottageFrame.sheet, draw: () => planDrawing(cottage, cottageFrame) },
   ];
 
-  for (const { name: id, level, draw } of sheets) {
-    const roomTexts = (drawing: PlanDrawing, room: Room) => {
-      const [x, z] = room.label ?? [(room.rect.x[0] + room.rect.x[1]) / 2, (room.rect.z[0] + room.rect.z[1]) / 2];
-      return drawing.labels.filter((label) => label.at[0] === x && label.at[1] > z - 0.2 && label.at[1] < z + 0.6);
-    };
-
+  for (const { name: id, level, sheet, draw } of sheets) {
     it(`letters every room of the ${id} plan inside its walls, clear of its fittings and door swings`, () => {
-      const drawing = draw();
-      for (const room of level.rooms) {
-        const texts = roomTexts(drawing, room);
-        expect(texts.length, room.name).toBeGreaterThanOrEqual(1);
-        for (const label of texts) {
-          const box = labelBox(label);
-          expect(contains(room.rect, box), `${room.name}: ${label.text}`).toBe(true);
-          for (const fixture of level.fixtures) expect(overlaps(box, fixture.rect), `${room.name}: ${label.text} on a ${fixture.kind}`).toBe(false);
-          for (const wall of level.walls) {
-            for (const opening of wall.openings ?? []) {
-              if (opening.type === 'door') expect(intoSwing(box, wall, opening), `${room.name}: ${label.text} in a door swing`).toBe(false);
-            }
-          }
-        }
-      }
+      expect(labelsInRooms(level, draw())).toEqual([]);
     });
 
     it(`never letters one note over another on the ${id} plan`, () => {
-      const boxes = draw().labels.map((label) => ({ label, box: labelBox(label) }));
-      for (let i = 0; i < boxes.length; i++) {
-        for (let j = i + 1; j < boxes.length; j++) {
-          expect(overlaps(boxes[i].box, boxes[j].box), `${boxes[i].label.text} / ${boxes[j].label.text}`).toBe(false);
-        }
-      }
+      expect(notesApart(draw())).toEqual([]);
+    });
+
+    it(`keeps the whole ${id} plan on its plot's sheet`, () => {
+      expect(onSheet(draw(), sheet)).toEqual([]);
     });
   }
 });

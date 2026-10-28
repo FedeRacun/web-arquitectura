@@ -105,8 +105,15 @@ export interface Stair extends Rect {
 
 export interface Level {
   readonly name: string;
-  /** The floor slab under this level. */
+  /** The floor slab under this level; with a footprint, its bounding rect. */
   readonly slab: Rect;
+  /**
+   * Where the floor is not a plain rect (an L, a ring around a patio): rects
+   * whose union is the floor. They may share sides or overlap. `slab` stays
+   * their bounding rect, so the grid, the dimension strings and the sheet's
+   * frame still read it. Drawn only: the 3D house (params.ts) raises `slab`.
+   */
+  readonly footprint?: readonly Rect[];
   readonly walls: readonly Wall[];
   /** Column centres. */
   readonly columns: readonly Point[];
@@ -210,6 +217,73 @@ export function contains(outer: Rect, inner: Rect) {
     inner.z[0] >= outer.z[0] - EPS &&
     inner.z[1] <= outer.z[1] + EPS
   );
+}
+
+/** A straight edge between two plan points. */
+export type Segment = readonly [Point, Point];
+
+/** The distinct values, ascending; values closer than EPS count as one. */
+function stations(values: readonly number[]): number[] {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted.filter((value, i) => i === 0 || value - sorted[i - 1] > EPS);
+}
+
+/** The grid the rects' edges cut the plane into, and whether the rects cover each of its cells. */
+function coverGrid(rects: readonly Rect[]) {
+  const xs = stations(rects.flatMap((rect) => rect.x));
+  const zs = stations(rects.flatMap((rect) => rect.z));
+  const cells = xs.slice(1).map((x1, i) => {
+    const cx = (xs[i] + x1) / 2;
+    return zs.slice(1).map((z1, j) => {
+      const cz = (zs[j] + z1) / 2;
+      return rects.some((rect) => cx > rect.x[0] && cx < rect.x[1] && cz > rect.z[0] && cz < rect.z[1]);
+    });
+  });
+  /** Outside the grid nothing is covered. */
+  const covered = (i: number, j: number) => cells[i]?.[j] ?? false;
+  return { xs, zs, covered };
+}
+
+/** Runs of equal, non-zero marks along a line of cells, from station to station. */
+function runs(marks: readonly number[], at: readonly number[]): Range[] {
+  const found: Range[] = [];
+  for (let start = 0, k = 1; k <= marks.length; k++) {
+    if (k < marks.length && marks[k] === marks[start]) continue;
+    if (marks[start] !== 0) found.push([at[start], at[k]]);
+    start = k;
+  }
+  return found;
+}
+
+/**
+ * The boundary of the rects' union: its outer edge and the edge of any hole
+ * in it, never a seam where two rects meet. Collinear pieces of an edge are
+ * merged while the floor stays on the same side of it.
+ */
+export function outlineEdges(rects: readonly Rect[]): Segment[] {
+  const { xs, zs, covered } = coverGrid(rects);
+  const edges: Segment[] = [];
+  // Along each line of the grid a cell side is an edge where the cells on either side differ;
+  // the mark's sign says which side the floor is on.
+  zs.forEach((z, j) => {
+    const marks = xs.slice(1).map((_, i) => Number(covered(i, j)) - Number(covered(i, j - 1)));
+    for (const [a, b] of runs(marks, xs)) edges.push([[a, z], [b, z]]);
+  });
+  xs.forEach((x, i) => {
+    const marks = zs.slice(1).map((_, j) => Number(covered(i, j)) - Number(covered(i - 1, j)));
+    for (const [a, b] of runs(marks, zs)) edges.push([[x, a], [x, b]]);
+  });
+  return edges;
+}
+
+/** The area the rects cover together, what they share counted once. */
+export function unionArea(rects: readonly Rect[]): number {
+  const { xs, zs, covered } = coverGrid(rects);
+  let sum = 0;
+  for (let i = 0; i < xs.length - 1; i++) {
+    for (let j = 0; j < zs.length - 1; j++) if (covered(i, j)) sum += (xs[i + 1] - xs[i]) * (zs[j + 1] - zs[j]);
+  }
+  return sum;
 }
 
 /** Floor and ceiling of a level, as heights above the ground the house stands on. */
@@ -449,6 +523,12 @@ function rectStroke(rect: Rect, ink: Ink, weight: Weight, dash?: Dash): Stroke {
 }
 
 const line = (ink: Ink, weight: Weight, a: Point, b: Point, dash?: Dash): Stroke => ({ ink, weight, points: [a, b], dash });
+
+/** A floor's edge, seen beyond the cut: its slab, or its footprint's outline, so an L is not closed across its garden. */
+function floorEdge(level: Level, dash?: Dash): Stroke[] {
+  if (!level.footprint) return [rectStroke(level.slab, 'line', 'beyond', dash)];
+  return outlineEdges(level.footprint).map(([a, b]) => line('line', 'beyond', a, b, dash));
+}
 
 /** A dimension string: a line with a tick at every station and each span written above it. */
 function dimensionString(drawing: PlanDrawing, stations: number[], along: 'x' | 'z', at: number, reach: number) {
@@ -855,7 +935,7 @@ export function planDrawing(plan: SheetPlan, frame: SheetFrame, levelId: LevelId
   for (const [x, z] of level.columns) drawing.poche.push({ x: [x - half, x + half], z: [z - half, z + half] });
 
   // What is seen below the cut: the slab edge, the galería paving, the stair, the rails, the fittings.
-  drawing.strokes.push(rectStroke(level.slab, 'line', 'beyond'));
+  drawing.strokes.push(...floorEdge(level));
   if (levelId === 'ground' && galeria) drawing.strokes.push(rectStroke(galeria, 'line', 'beyond'));
   // The stair climbs to the upper floor, which stands the ground storey's height up.
   if (level.stair) stairStrokes(drawing, level.stair, plan.heights.ground - floor);
@@ -864,7 +944,7 @@ export function planDrawing(plan: SheetPlan, frame: SheetFrame, levelId: LevelId
 
   // Above the cut, dashed: the upper floor over the ground floor, its cantilever, and the canopy over the front door.
   // From the upper floor the canopy is seen below.
-  if (above) drawing.strokes.push(rectStroke(above.slab, 'line', 'beyond', 'dashed'));
+  if (above) drawing.strokes.push(...floorEdge(above, 'dashed'));
   if (canopy) drawing.strokes.push(rectStroke(canopy, 'line', 'beyond', levelId === 'ground' ? 'dashed' : undefined));
 
   if (above) {
