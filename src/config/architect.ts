@@ -24,7 +24,7 @@ export const architect = {
     blade: { height: 8.6, thickness: 0.45 },
   },
   materials: {
-    concrete: '#a39d93',
+    concrete: '#a5a29e',
     wood: '#8b5a34',
     glass: '#2a3436',
     /** Warm light behind the glass in scene 5. */

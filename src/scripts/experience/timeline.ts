@@ -101,8 +101,8 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   // 4 · La materia. Three waves sweep up the volume: concrete, then wood, then glass.
   put('materia', 0.04, 0.9, { wave: 3 });
   put('materia', 0, 0.3, { sketchOpacity: 0 });
-  put('materia', 0, 1, { azimuth: 0.74, elevation: 0.22, distance: 37, targetY: 4 });
-  put('materia', 0, 0.35, { frameX: -0.16, ease: 'power1.inOut' });
+  put('materia', 0, 1, { azimuth: 0.74, elevation: 0.22, distance: 40, targetY: 4 });
+  put('materia', 0, 0.35, { frameX: -0.13, ease: 'power1.inOut' });
   sentence(tl, c.materia, at('materia', 0.16), at('materia', 0.82));
 
   // 5 · La luz. The scroll moves the sun; the pointer leans it; the interior lights up.
