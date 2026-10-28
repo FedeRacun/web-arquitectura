@@ -111,7 +111,8 @@ export interface Level {
    * Where the floor is not a plain rect (an L, a ring around a patio): rects
    * whose union is the floor. They may share sides or overlap. `slab` stays
    * their bounding rect, so the grid, the dimension strings and the sheet's
-   * frame still read it. Drawn only: the 3D house (params.ts) raises `slab`.
+   * frame still read it. The 3D house (params.ts) lays its floor and its
+   * roof on the footprint too.
    */
   readonly footprint?: readonly Rect[];
   readonly walls: readonly Wall[];
@@ -352,7 +353,7 @@ export interface WallBlock {
 }
 
 /** The wall as built: full-height runs between openings, plus the sills and lintels around them. */
-export function wallBlocks(wall: Wall, plan: Plan, clear: number): WallBlock[] {
+export function wallBlocks(wall: Wall, plan: SheetPlan, clear: number): WallBlock[] {
   if (wall.kind === 'glazing') return [];
   const openings = wall.openings ?? [];
   const blocks: WallBlock[] = solidRuns(

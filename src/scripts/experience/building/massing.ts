@@ -1,10 +1,10 @@
 import { BoxGeometry, BufferAttribute, Group, Mesh, type BufferGeometry } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createWaveMaterial, type SharedUniforms, type WaveMaterial } from './materialWave';
-import { LAYERS, type Building, type LayerId, type MaterialKind, type Part } from './params';
+import { LAYERS, type LayerId, type MaterialKind, type Model, type Part } from './params';
 
 /*
- * Turns the building's boxes into one merged mesh per layer and material:
+ * Turns a house's boxes into one merged mesh per layer and material:
  * at most twelve draw calls for the whole building. Each layer is its own
  * group so the exploded axonometric can lift it as a piece.
  */
@@ -31,7 +31,7 @@ function partGeometry(part: Part): BufferGeometry {
 }
 
 export function createMassing(
-  building: Building,
+  building: Model,
   colors: Record<MaterialKind, string>,
   shared: SharedUniforms,
   options: { lowDetail: boolean; shadows: boolean },
