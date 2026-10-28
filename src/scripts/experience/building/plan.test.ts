@@ -110,6 +110,27 @@ describe('the plan data', () => {
     expect(plan.upper.slab.x[0]).toBeGreaterThan(plan.ground.slab.x[0]);
     expect(plan.upper.slab.x[1] - plan.ground.slab.x[1]).toBeGreaterThan(3);
   });
+
+  it('closes the west side with the blade: flush with the ground floor, past both its ends, up to the roof', () => {
+    const { blade, ground, heights } = plan;
+    expect(blade.x[0]).toBe(ground.slab.x[0]);
+    expect(blade.z[0]).toBeLessThan(ground.slab.z[0]);
+    expect(blade.z[1]).toBeGreaterThan(ground.slab.z[1]);
+    expect(blade.height).toBeCloseTo(heights.ground + heights.upper, 10);
+    for (const rect of [...plan.ground.walls, ...plan.upper.walls, ...plan.terrace.parapets]) expect(overlaps(rect, blade)).toBe(false);
+  });
+
+  it("covers the front door with a canopy carried by the blade's south wing", () => {
+    const { blade, canopy, ground } = plan;
+    expect(canopy.x[0]).toBe(blade.x[1]);
+    expect(canopy.z[0]).toBeGreaterThanOrEqual(blade.z[0]);
+    expect(canopy.z[1]).toBe(ground.slab.z[0]);
+    const street = ground.walls.find((wall) => runsAlongX(wall) && wall.z[0] === ground.slab.z[0])!;
+    const door = street.openings!.find((opening) => opening.type === 'door')!;
+    const [a, b] = openingSpan(street, door);
+    expect(a).toBeGreaterThanOrEqual(canopy.x[0]);
+    expect(b).toBeLessThanOrEqual(canopy.x[1]);
+  });
 });
 
 describe('cutting a wall', () => {
@@ -193,6 +214,18 @@ describe('the drawn plan', () => {
   it('marks the level once per floor and where the floor changes level', () => {
     const levels = drawing.labels.filter((label) => label.text.startsWith('NPT')).map((label) => label.text);
     expect(levels).toEqual(['NPT ±0,00', 'NPT −0,05']);
+  });
+
+  it('dimensions the blade past both ends of the house on the west, and notes what it is', () => {
+    const west = drawing.labels.filter((label) => label.quarter && label.at[0] < plan.blade.x[0]).map((label) => label.text);
+    expect(west).toEqual(['1,50', '10,20', '1,50']);
+    expect(drawing.labels.map((label) => label.text)).toContain('MURO H° VISTO e 0,30 · h +7,00');
+  });
+
+  it('draws the canopy over the front door dashed, above the cut', () => {
+    const { x, z } = plan.canopy;
+    const corners = [[x[0], z[0]], [x[1], z[0]], [x[1], z[1]], [x[0], z[1]]];
+    expect(drawing.strokes).toContainEqual(expect.objectContaining({ dash: 'dashed', points: corners }));
   });
 });
 

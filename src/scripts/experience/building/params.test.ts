@@ -47,6 +47,20 @@ describe('deriveBuilding', () => {
     expect(full.height).toBe(plan.blade.height);
   });
 
+  it('builds the blade into the house: no other part runs into it', () => {
+    const blade = full.volumes[2];
+    const into = (b: Box) => [0, 1, 2].every((axis) => Math.min(b.max[axis], blade.max[axis]) - Math.max(b.min[axis], blade.min[axis]) > 1e-6);
+    expect(full.parts.filter((part) => part.box !== blade && into(part.box))).toEqual([]);
+  });
+
+  it('casts the canopy over the front door as thick as the terrace floor beside it', () => {
+    const offset = planOffset(plan);
+    const canopy = full.parts.filter(({ box }) => box.min[0] === plan.canopy.x[0] + offset.x && box.max[2] === plan.canopy.z[1] + offset.z);
+    expect(canopy.length).toBe(1);
+    expect(canopy[0].box.min[1]).toBeCloseTo(plan.heights.ground - plan.heights.slab, 10);
+    expect(canopy[0].box.max[1]).toBeCloseTo(plan.heights.ground - plan.terrace.drop, 10);
+  });
+
   it('draws fewer parts in the low-detail tier', () => {
     expect(low.parts.length).toBeLessThan(full.parts.length);
   });

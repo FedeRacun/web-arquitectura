@@ -144,8 +144,10 @@ export interface Plan {
   readonly grid: { readonly x: readonly GridAxis[]; readonly z: readonly GridAxis[] };
   readonly ground: Level;
   readonly upper: Level;
-  /** The free-standing concrete wall west of the house. */
+  /** The concrete wall that closes the west side, past both ends of the house. */
   readonly blade: Rect & { readonly height: number };
+  /** The slab over the front door, carried by the blade at the terrace's level. */
+  readonly canopy: Rect;
   /** Paving under the cantilever. */
   readonly galeria: Rect;
   /** The base's roof that the upper floor does not cover: a terrace with a parapet. */
@@ -434,8 +436,8 @@ function dimensionString(drawing: PlanDrawing, stations: number[], along: 'x' | 
   drawing.strokes.push(line('note', 'hair', point(sorted[0] - 0.25, at), point(sorted.at(-1)! + 0.25, at)));
   const tick = 0.13;
   for (const s of sorted) {
-    // Extension line from near the building out past the dimension line.
-    drawing.strokes.push(line('note', 'hair', point(s, at - reach), point(s, at + 0.18)));
+    // Extension line from near the building out past the dimension line; a negative reach dimensions the west or south side.
+    drawing.strokes.push(line('note', 'hair', point(s, at - reach), point(s, at + Math.sign(reach) * 0.18)));
     // The architect's tick: a short slash at 45 degrees.
     drawing.strokes.push(
       line('note', 'beyond', along === 'x' ? [s - tick, at + tick] : [at - tick, s - tick], along === 'x' ? [s + tick, at - tick] : [at + tick, s + tick]),
@@ -757,11 +759,12 @@ function scaleBar(drawing: PlanDrawing, at: Point) {
       drawing.strokes.push({ ink: 'note', weight: 'hair', closed: true, points: [[x + m, z], [x + m + 1, z], [x + m + 1, z + 0.12], [x + m, z + 0.12]] });
     }
   }
+  // The figures over the bar, so it sits on the title's baseline.
   for (const m of marks) {
     drawing.strokes.push(line('note', 'thin', [x + m, z - 0.08], [x + m, z + 0.2]));
-    drawing.labels.push({ ink: 'note', at: [x + m, z + 0.52], text: `${m}`, size: TEXT.note, align: 'center' });
+    drawing.labels.push({ ink: 'note', at: [x + m, z - 0.16], text: `${m}`, size: TEXT.note, align: 'center' });
   }
-  drawing.labels.push({ ink: 'note', at: [x + 5.35, z + 0.18], text: 'm', size: TEXT.note, align: 'left' });
+  drawing.labels.push({ ink: 'note', at: [x + 5.35, z + 0.12], text: 'm', size: TEXT.note, align: 'left' });
 }
 
 export interface SheetFrame {
@@ -800,8 +803,10 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
   for (const rail of level.rails ?? []) drawing.strokes.push(rectStroke(rail, 'line', 'thin'));
   for (const fixture of level.fixtures) fixtureStrokes(drawing, fixture);
 
-  // Above the cut, dashed: the upper floor over the ground floor, and its cantilever.
+  // Above the cut, dashed: the upper floor over the ground floor, its cantilever, and the canopy over the front door.
+  // From the upper floor the canopy is seen below.
   if (levelId === 'ground') drawing.strokes.push(rectStroke(plan.upper.slab, 'line', 'beyond', 'dashed'));
+  drawing.strokes.push(rectStroke(plan.canopy, 'line', 'beyond', levelId === 'ground' ? 'dashed' : undefined));
 
   if (levelId === 'ground') {
     drawing.labels.push({
@@ -812,15 +817,26 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
       align: 'right',
     });
   }
+  // The blade's note on the street side, past its south wing and the canopy, clear of the first axis.
+  const { blade } = plan;
+  drawing.labels.push({
+    ink: 'note',
+    at: [plan.grid.x[0].at + 0.3, blade.z[0] - 0.1],
+    text: `MURO H° VISTO e ${fmt(length(blade.x))} · h +${fmt(blade.height)}`,
+    size: TEXT.small,
+    align: 'left',
+  });
 
   // The grid: dash-dot axes through the columns, numbered in bubbles on the street side,
-  // lettered at the east end, clear of the title block in the front corner.
+  // lettered at the east end, clear of the title block in the front corner. On the garden
+  // side the axes run out to the dimension strings, which clear the blade's north wing.
   const { bounds } = frame;
+  const garden = Math.max(bounds.z[1], blade.z[1]) + 0.15;
   const bubble = 0.36;
   const xAxisEnd = bounds.z[0] - 2.3;
   const zAxisEnd = bounds.x[1] + 1.75;
   for (const axis of plan.grid.x) {
-    drawing.strokes.push(line('note', 'hair', [axis.at, bounds.z[1] + 0.6], [axis.at, xAxisEnd + bubble], 'axis'));
+    drawing.strokes.push(line('note', 'hair', [axis.at, garden], [axis.at, xAxisEnd + bubble], 'axis'));
     drawing.circles.push({ ink: 'note', weight: 'thin', centre: [axis.at, xAxisEnd], radius: bubble });
     drawing.labels.push({ ink: 'note', at: [axis.at, xAxisEnd + 0.15], text: axis.id, size: TEXT.axis, align: 'center' });
   }
@@ -836,12 +852,14 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
   const west = Math.min(ground.slab.x[0], upper.slab.x[0]);
   const east = Math.max(ground.slab.x[1], upper.slab.x[1]);
   const front = Math.max(ground.slab.z[1], upper.slab.z[1]);
-  dimensionString(drawing, [...plan.grid.x.map((axis) => axis.at), east], 'x', bounds.z[1] + 0.8, 0.6);
-  dimensionString(drawing, [...new Set([ground.slab.x[0], ground.slab.x[1], upper.slab.x[1]])], 'x', bounds.z[1] + 1.4, 0.3);
-  dimensionString(drawing, [west, east], 'x', bounds.z[1] + 2.0, 0.25);
+  dimensionString(drawing, [...plan.grid.x.map((axis) => axis.at), east], 'x', garden + 0.25, 0.25);
+  dimensionString(drawing, [...new Set([ground.slab.x[0], ground.slab.x[1], upper.slab.x[1]])], 'x', garden + 0.7, 0.3);
+  dimensionString(drawing, [west, east], 'x', garden + 1.15, 0.25);
   dimensionString(drawing, plan.grid.z.map((axis) => axis.at), 'z', bounds.x[1] + 0.35, 0.3);
   dimensionString(drawing, [...new Set([ground.slab.z[0], upper.slab.z[1], ground.slab.z[1]])], 'z', bounds.x[1] + 0.8, 0.25);
   dimensionString(drawing, [Math.min(ground.slab.z[0], upper.slab.z[0]), front], 'z', bounds.x[1] + 1.25, 0.25);
+  // On the west, the blade and how far it runs past the house at each end.
+  dimensionString(drawing, [blade.z[0], ground.slab.z[0], ground.slab.z[1], blade.z[1]], 'z', blade.x[0] - 1.0, -0.75);
 
   // Room names, with the area under them and the level where the floor sets one. A name wider
   // than its room is abbreviated, and an area that does not fit is left off.
@@ -860,10 +878,11 @@ export function planDrawing(plan: Plan, frame: SheetFrame, levelId: LevelId = 'g
     }
   }
 
-  // Title, scale and north point in the plot's front corners.
+  // Title with the graphic scale beside it, and the north point, in the plot's front corners.
   const { sheet } = frame;
-  drawing.labels.push({ ink: 'note', at: [sheet.x[0] + 0.9, sheet.z[1] - 1.0], text: level.name.toUpperCase(), size: TEXT.title, bold: true, align: 'left', tracking: 0.14 });
-  scaleBar(drawing, [sheet.x[0] + 0.9, sheet.z[1] - 0.65]);
+  const title: Label = { ink: 'note', at: [sheet.x[0] + 0.9, sheet.z[1] - 0.3], text: level.name.toUpperCase(), size: TEXT.title, bold: true, align: 'left', tracking: 0.14 };
+  drawing.labels.push(title);
+  scaleBar(drawing, [labelBox(title).x[1] + 0.8, sheet.z[1] - 0.42]);
   northPoint(drawing, [sheet.x[1] - 1.3, sheet.z[1] - 1.5]);
 
   return drawing;

@@ -23,8 +23,8 @@ import {
  *
  * Axes: x along the site's width, y up, z towards the viewer (the front,
  * which is north: the garden). The composition: a glazed ground floor (base),
- * an upper bar that cantilevers past it over the galería, and a
- * free-standing concrete blade wall on the west that rises above both.
+ * an upper bar that cantilevers past it over the galería, and a concrete
+ * blade wall that closes the west side and runs past both ends of the house.
  */
 
 export const LAYERS = ['estructura', 'envolvente', 'luz', 'habitar'] as const;
@@ -166,13 +166,17 @@ export function deriveBuilding(config: BuildingConfig, detail: Detail): Building
   const bladeBox = at(plan.blade, 0, plan.blade.height);
 
   // Estructura: the slabs (the upper one open over the stair), the galería's paving, the columns.
-  add('estructura', 'concrete', at(plan.ground.slab, 0, slab));
+  // The slabs stop at the blade, which runs from the ground to the roof.
+  for (const piece of subtract(plan.ground.slab, plan.blade)) add('estructura', 'concrete', at(piece, 0, slab));
   add('estructura', 'concrete', at(plan.galeria, 0, slab - 0.05));
   const upperFloor = [...subtract(plan.upper.slab, plan.ground.slab), ...intersect(plan.upper.slab, plan.ground.slab)];
   for (const piece of subtractAll(upperFloor, plan.upper.voids ?? [])) add('estructura', 'concrete', at(piece, groundHeight - slab, groundHeight));
-  // Under the terrace the same slab, its top a step lower, under the deck.
+  // Under the terrace the same slab, its top a step lower, under the deck; the canopy at its level.
   const terraceFloor = groundHeight - plan.terrace.drop;
-  for (const piece of subtract(plan.ground.slab, plan.upper.slab)) add('estructura', 'concrete', at(piece, groundHeight - slab, terraceFloor - DECK));
+  for (const piece of subtractAll(subtract(plan.ground.slab, plan.upper.slab), [plan.blade])) {
+    add('estructura', 'concrete', at(piece, groundHeight - slab, terraceFloor - DECK));
+  }
+  add('estructura', 'concrete', at(plan.canopy, groundHeight - slab, terraceFloor));
   const half = plan.column / 2;
   const groundLevel = levelHeights(plan, 'ground');
   for (const [x, z] of plan.ground.columns) {

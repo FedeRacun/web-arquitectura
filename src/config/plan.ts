@@ -41,19 +41,18 @@ export const plan: Plan = {
     name: 'Planta baja',
     slab: { x: [0, 15], z: [0, 10.2] },
     walls: [
-      // South: the street side, closed, with the entrance.
+      // South: the street side, closed, with the entrance under the canopy. The west side is the blade.
       {
         kind: 'concrete',
-        x: [0, 15],
+        x: [EXT, 15],
         z: [0, EXT],
         openings: [
-          { type: 'door', at: 1.7, width: 1.0, hinge: 'min', side: 1, head: 2.4 },
-          { type: 'window', at: 10.54, width: 0.7, sill: 1.6, head: 2.1 },
-          { type: 'window', at: 12.65, width: 1.2, sill: 1.1, head: 2.1 },
+          { type: 'door', at: 1.4, width: 1.0, hinge: 'min', side: 1, head: 2.4 },
+          { type: 'window', at: 10.24, width: 0.7, sill: 1.6, head: 2.1 },
+          { type: 'window', at: 12.35, width: 1.2, sill: 1.1, head: 2.1 },
         ],
       },
-      // West, shaded by the blade; east, onto the galería under the cantilever.
-      { kind: 'concrete', x: [0, EXT], z: [EXT, 10.2] },
+      // East, onto the galería under the cantilever.
       {
         kind: 'concrete',
         x: [15 - EXT, 15],
@@ -225,7 +224,10 @@ export const plan: Plan = {
     ],
   },
 
-  blade: { x: [-1.65, -1.2], z: [-1.5, 11.7], height: 8.6 },
+  // The west wall, in exposed concrete: it runs 1.50 m past the house at each end and up to the roof of
+  // the upper bar, so it is the back wall of the terrace too. Its south wing carries the canopy.
+  blade: { x: [0, EXT], z: [-1.5, 11.7], height: 7.0 },
+  canopy: { x: [EXT, 3.6], z: [-1.2, 0] },
   galeria: { x: [15, 21.6], z: [0, 8.4] },
   // The terrace sits a step below the upper floor, so the door's threshold can be sealed. Only its west
   // part is walked on; the strip past the bedroom windows is gravel, behind a glass rail.
@@ -235,8 +237,7 @@ export const plan: Plan = {
     gravel: [{ x: [4.5, 15 - EXT], z: [8.4, 9.9] }],
     rails: [{ x: [4.5, 4.55], z: [8.4, 9.9] }],
     parapets: [
-      { x: [0, 15], z: [9.9, 10.2] },
-      { x: [0, EXT], z: [0, 9.9] },
+      { x: [EXT, 15], z: [9.9, 10.2] },
       { x: [EXT, 4.5], z: [0, EXT] },
       { x: [15 - EXT, 15], z: [8.4, 9.9] },
     ],
