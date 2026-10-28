@@ -108,6 +108,8 @@ export function createGuide(lenis: Lenis, path: GuidePath) {
   };
 
   return {
+    /** One step in `direction`, as a gesture would take it (the scroll hint's click). */
+    walk,
     /** Lenis's hook for every wheel and touch event; false keeps Lenis from scrolling by itself. */
     virtualScroll({ deltaY, event }: VirtualScrollData): boolean {
       // The intro holds the page (Lenis swallows the event); pinch-zoom stays the browser's.
@@ -120,9 +122,12 @@ export function createGuide(lenis: Lenis, path: GuidePath) {
     },
     keydown(event: KeyboardEvent) {
       if (lenis.isStopped || event.altKey || event.ctrlKey || event.metaKey) return;
-      if (event.target instanceof Element && event.target.closest('button, input, select, textarea, [contenteditable]')) return;
+      const focused = event.target instanceof Element ? event.target : null;
+      if (focused?.closest('input, select, textarea, [contenteditable]')) return;
       let direction = PAGING_KEYS[event.key];
       if (!direction) return;
+      // Space presses a focused button (the scroll hint); the arrows and Page keys still walk from it.
+      if (event.key === ' ' && focused?.closest('button')) return;
       if (event.key === ' ' && event.shiftKey) direction = -1;
       event.preventDefault();
       if (!event.repeat) walk(direction);

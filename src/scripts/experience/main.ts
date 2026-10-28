@@ -230,6 +230,8 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
   history.scrollRestoration = 'manual';
   scrollTo(0, 0);
   const scroll = startScroll(quality.reducedMotion);
+  // The hint is also a button: clicked or tapped, it takes the first step of the walk.
+  dom.hint?.addEventListener('click', () => scroll.next());
   const content = Object.fromEntries(
     SCENES.map(({ id }) => [id, document.querySelector<HTMLElement>(`[data-scene="${id}"] [data-scene-content]`)]).filter(
       ([, element]) => element,
@@ -317,12 +319,13 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
       if (content.vacio) {
         intro.fromTo(content.vacio, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.6, ease: 'power2.out' }, 4.9);
       }
-      if (dom.hint) intro.to(dom.hint, { opacity: 1, duration: 1.2, ease: 'power1.out' }, 5.6);
+      if (dom.hint) intro.to(dom.hint, { autoAlpha: 1, duration: 1.2, ease: 'power1.out' }, 5.6);
       // Anyone who tries to scroll is not made to wait: the intro hurries to its end.
       const hurry = () => intro.timeScale(5);
       addEventListener('wheel', hurry, { once: true, passive: true });
       addEventListener('touchstart', hurry, { once: true, passive: true });
       addEventListener('keydown', hurry, { once: true });
+      dom.hint?.addEventListener('click', hurry, { once: true });
     });
   }
 }

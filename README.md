@@ -76,7 +76,9 @@ CSS variable names.
   slow, even pace while the scene plays and lands softly. It rests on each
   sentence and on the sun halfway across; the sketch is drawn on the way. The stops are the
   `rest` values in [`scenes.ts`](src/scripts/experience/scenes.ts). The
-  scrollbar, Home and End still move freely.
+  scrollbar, Home and End still move freely. On the first scene a quiet
+  "Bajar" with a drifting arrow invites the first step; it is a button, so a
+  click or a tap takes that step too.
 - **Layer words.** In the exploded scene the four words (Estructura,
   Envolvente, Luz, Habitar) always show, dim, beside their layers; hovering a
   layer lights its word in copper. On narrow screens only one word fits, as a

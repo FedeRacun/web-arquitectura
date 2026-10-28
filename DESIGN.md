@@ -67,7 +67,7 @@ components:
 
 **Creative North Star: "The Drawing Board at Night"**
 
-One continuous dark frame in which a building is drawn, raised, clad, lit, taken apart and shrunk to a model, all driven by the visitor's scroll. The page has no chrome: no nav, no logo, no cards, no grid of content. Each scene carries at most one sentence, set large in a serif and given air, while the 3D scene does the rest of the talking. Interface marks borrow from the drafting table: hairline leader lines like axonometric callouts, a plumb line for the scroll hint, a CAD crosshair for the pointer.
+One continuous dark frame in which a building is drawn, raised, clad, lit, taken apart and shrunk to a model, all driven by the visitor's scroll. The page has no chrome: no nav, no logo, no cards, no grid of content. Each scene carries at most one sentence, set large in a serif and given air, while the 3D scene does the rest of the talking. Interface marks borrow from the drafting table: hairline leader lines like axonometric callouts, a drifting arrow under the word "Bajar" for the scroll hint, a CAD crosshair for the pointer.
 
 Material character comes from architecture rather than from UI: board-formed concrete with formwork tie holes, warm wood, dark glass, hard raking light, and a balsa study model under one lamp. Everything is procedural; no image is downloaded. A fine concrete grain sits over the whole frame, scene included.
 
@@ -89,7 +89,7 @@ A warm near-black ground with bone type and linework, and one copper accent kept
 
 ### Neutral
 - **Warm Black** (base): the page, the preloader, the WebGL clear colour, and the text colour on the copper and bone button states.
-- **Bone** (bone): all type, the charcoal sketch strokes, the point of light, hairlines at reduced strength (leader lines at 45%, the scroll-hint line at 28%, scrollbar thumb at 22%, all via `color-mix` in oklab), and the focus outline.
+- **Bone** (bone): all type, the charcoal sketch strokes, the point of light, hairlines at reduced strength (leader lines at 45% and the scrollbar thumb at 22%, via `color-mix` in oklab; the scroll-hint word at 60% opacity and its arrow at 80%), and the focus outline.
 
 ### Scene Materials (3D only, per architect)
 - **Site Board** (ground): the plot's board once the building stands on it.
@@ -145,7 +145,7 @@ Stacking is by role, not elevation: scene content 20, preloader 30, grain 40, cu
 
 ## Shapes
 
-Square and hairline. Every interface mark has square corners (0px): the button, the cursor's pick box, the scroll-hint tick. Lines are 1px: leader lines, the plumb line, the cursor arms (2.25rem long), the focus outline (offset 6px). The single circle is the 5px point of light. In the scene, strokes are camera-facing ribbons of constant pixel width with broken, grainy edges, never clean CAD wireframes.
+Square and hairline. Every interface mark has square corners (0px): the button, the cursor's pick box. Lines are 1px: leader lines, the plumb line, the scroll-hint arrow, the cursor arms (2.25rem long), the focus outline (offset 6px). The single circle is the 5px point of light. In the scene, strokes are camera-facing ribbons of constant pixel width with broken, grainy edges, never clean CAD wireframes.
 
 ## Components
 
@@ -163,7 +163,7 @@ The exploded axonometric's four layer words. Each hangs off its layer on a 1px b
 Replaces the pointer on hover-capable devices: a copper crosshair of two 1px arms; over anything interactive the cross folds into a 0.875rem square pick box (0.45s, settle curve).
 
 ### Scroll Hint
-Scene 1 only: a 1px plumb line, 3.25rem tall, bone at 28%, with a 5px bone tick sliding down it every 3.2s. Still under reduced motion.
+Scene 1 only, at the bottom centre: the word "Bajar" in DM Sans 500 at 0.9rem, bone at 60% (full on hover or focus), over a 1px bone arrow 22px tall that drifts down 0.8rem and fades every 3.2s on the settle curve. "Bajar" holds for wheel, swipe and keys alike, where "deslizar" would read as a drag. The hint is a button: a click, a tap or Enter takes the first step of the guided walk. It fades out, and leaves the tab order, as the first scene scrolls away. The arrow stands still under reduced motion.
 
 ### Preloader
 A full warm-black cover with a breathing 5px point of light (2.8s, alternate) placed where the scene's own point appears, 8vh above centre; it fades out over 1.2s as the WebGL point takes over.

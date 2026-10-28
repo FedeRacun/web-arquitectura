@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { createGestureGate, glideEasing, glideSeconds } from './guide';
+import type Lenis from 'lenis';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createGestureGate, createGuide, glideEasing, glideSeconds } from './guide';
+import { restStops } from './scenes';
 
 /** Average speed of the easing between two moments of the glide. */
 const pace = (from: number, to: number) => (glideEasing(to) - glideEasing(from)) / (to - from);
@@ -80,5 +82,54 @@ describe('createGestureGate', () => {
     expect(gate.feed('touchend', -20, 48)).toBe(0);
     gate.feed('touchstart', 0, 60);
     expect(gate.feed('touchmove', -20, 76)).toBe(-1);
+  });
+});
+
+/** Just enough of an element for the guide to ask what has focus. */
+class FakeElement {
+  constructor(private readonly tag: string) {}
+  closest(selector: string) {
+    return selector.split(',').some((part) => part.trim() === this.tag) ? this : null;
+  }
+}
+
+describe('createGuide', () => {
+  // One scroll pixel per thousandth of the story, resting at the top.
+  const setup = () => {
+    const lenis = { animatedScroll: 0, isScrolling: false, isStopped: false, scrollTo: vi.fn() };
+    const guide = createGuide(lenis as unknown as Lenis, { toScroll: (p) => p * 1000, toProgress: (y) => y / 1000 });
+    return { lenis, guide };
+  };
+  const press = (key: string, focused: string) =>
+    ({ key, target: new FakeElement(focused), preventDefault: vi.fn() }) as unknown as KeyboardEvent;
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('takes one step on request, as a gesture would: the scroll hint glides to the first sentence', () => {
+    const { lenis, guide } = setup();
+    guide.walk(1);
+    expect(lenis.scrollTo).toHaveBeenCalledOnce();
+    expect(lenis.scrollTo.mock.calls[0][0]).toBeCloseTo(restStops()[1] * 1000, 6);
+  });
+
+  it('walks on the arrow keys while the scroll hint has focus', () => {
+    vi.stubGlobal('Element', FakeElement);
+    const { lenis, guide } = setup();
+    guide.keydown(press('ArrowDown', 'button'));
+    expect(lenis.scrollTo).toHaveBeenCalledOnce();
+  });
+
+  it('leaves Space to a focused button, which presses it', () => {
+    vi.stubGlobal('Element', FakeElement);
+    const { lenis, guide } = setup();
+    guide.keydown(press(' ', 'button'));
+    expect(lenis.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('leaves the keys alone while typing in a field', () => {
+    vi.stubGlobal('Element', FakeElement);
+    const { lenis, guide } = setup();
+    guide.keydown(press('ArrowDown', 'input'));
+    expect(lenis.scrollTo).not.toHaveBeenCalled();
   });
 });

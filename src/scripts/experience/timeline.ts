@@ -81,7 +81,8 @@ export function createTimeline(targets: TimelineTargets, options: TimelineOption
   };
 
   // 1 · El vacío. The plot is drawn (by the intro); scrolling only lets the sentence go.
-  if (targets.hint) tl.fromTo(targets.hint, { opacity: 1 }, { opacity: 0, duration: 0.15, immediateRender: false }, 0);
+  // autoAlpha: once faded, the hint (a button) is hidden from clicks and the Tab key too.
+  if (targets.hint) tl.fromTo(targets.hint, { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15, immediateRender: false }, 0);
   sentence(tl, c.vacio, null, at('vacio', 0.3));
   put('vacio', 0.3, 0.8, { point: 0 });
   put('vacio', 0.35, 1, { azimuth: 0.5, elevation: 0.4, distance: 44, targetY: 2.4, frameY: 0, ease: 'power1.inOut' });

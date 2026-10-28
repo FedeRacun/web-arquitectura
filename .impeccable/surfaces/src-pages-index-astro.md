@@ -21,7 +21,7 @@ OWN-WORLD: Warm black #141210 under a concrete grain; bone #EDE6DA for type and 
 
 STORY: The visitor understands that design comes before building, believes this architect carries a line all the way to a finished volume, and ends on "Tu próxima obra." with a single WhatsApp button.
 
-FIRST VIEWPORT: Full-bleed dark void with grain. A point of light at the centre slides to a corner and traces the site's rectangle in perspective in a bone line. Then "Primero se piensa. Después se construye." in DM Serif, low and centred, "construye" in copper, and a plumb-line scroll hint at the bottom centre. No nav, no logo, no action until scene 8.
+FIRST VIEWPORT: Full-bleed dark void with grain. A point of light at the centre slides to a corner and traces the site's rectangle in perspective in a bone line. Then "Primero se piensa. Después se construye." in DM Serif, low and centred, "construye" in copper, and a quiet "Bajar" over a drifting arrow at the bottom centre, a button that takes the first step. No nav, no logo, no action until scene 8.
 
 FORM: The brief's eight-scene storyboard, pinned by the brief; no concept-seed roll (a brief-pinned direction beats the roll); code-led, no image generation available. Signature interaction: the scroll draws, and stopping leaves the stroke halfway. Motion grammar: slow, heavy, decelerating; nothing bounces.
 

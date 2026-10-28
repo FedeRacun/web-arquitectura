@@ -17,6 +17,8 @@ export interface Scroll {
   scrollToEnd(): void;
   /** Hands wheel, touch and paging keys to the guided walk along `path`. */
   guide(path: GuidePath): void;
+  /** One step down the story, as if the visitor had nudged the wheel. */
+  next(): void;
 }
 
 export function startScroll(reducedMotion: boolean): Scroll {
@@ -28,10 +30,13 @@ export function startScroll(reducedMotion: boolean): Scroll {
       start() {},
       scrollToEnd: () => window.scrollTo({ top: document.documentElement.scrollHeight }),
       guide() {},
+      next: () => window.scrollBy({ top: innerHeight }),
     };
   }
 
   let guide: ReturnType<typeof createGuide> | null = null;
+  // A step asked for before the walk exists (the hint pressed during the intro) is taken once it does.
+  let pending = false;
   const lenis = new Lenis({
     lerp: 0.075,
     wheelMultiplier: 0.85,
@@ -51,6 +56,11 @@ export function startScroll(reducedMotion: boolean): Scroll {
     guide(path) {
       guide = createGuide(lenis, path);
       addEventListener('keydown', guide.keydown);
+      if (pending) guide.walk(1);
+    },
+    next() {
+      if (guide) guide.walk(1);
+      else pending = true;
     },
   };
 }
