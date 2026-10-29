@@ -100,11 +100,6 @@ const SAFE: Record<'list' | 'focus', Record<'wide' | 'narrow', Safe>> = {
 
 export const safeArea = (mode: 'list' | 'focus', narrow: boolean) => SAFE[mode][narrow ? 'narrow' : 'wide'];
 
-/** A point on a screen `width` by `height` (pixels), held inside the margins: a label whose corner was zoomed off. */
-export const inSafeArea = (x: number, y: number, width: number, height: number, safe: Safe) => ({
-  x: Math.min(Math.max(x, width * safe.side), width * (1 - safe.side)),
-  y: Math.min(Math.max(y, height * safe.top), height * (1 - safe.bottom)),
-});
 
 /** Where the camera looks at a box from, round it and over it (radians). */
 export interface Angle {
@@ -382,6 +377,39 @@ export function announced(from: ProjectsNav, to: ProjectsNav) {
   return null;
 }
 
+const hook = new Vector3();
+
+/**
+ * Where a sheet's label hangs on a screen `width` by `height` seen through `camera`, in pixels: from the plan's
+ * near left corner as the camera sees it, wherever it was turned to (as ExplodedWords hangs its words from
+ * their layer); where the camera turns to 3/4, under the sheet's lowest corner, so the label stays off the
+ * drawing. `top` is the height the sheet lies at.
+ */
+export function labelAnchor(sheet: PlacedSheet, top: number, camera: PerspectiveCamera, width: number, height: number) {
+  // The camera looks along (-sin azimuth, -cos azimuth) over the table: the corner in front of it, on its left.
+  camera.getWorldDirection(hook);
+  const sin = -hook.x;
+  const cos = -hook.z;
+  const near: [number, number] = [cos - sin < 0 ? 1 : -1, sin + cos < 0 ? -1 : 1];
+  let bottom = Infinity;
+  for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    hook.set(sheet.x + (dx * sheet.width) / 2, top, sheet.z + (dz * sheet.depth) / 2).project(camera);
+    bottom = Math.min(bottom, hook.y);
+  }
+  hook.set(sheet.x + (near[0] * sheet.width) / 2, top, sheet.z + (near[1] * sheet.depth) / 2).project(camera);
+  return { x: ((hook.x + 1) / 2) * width, y: ((1 - bottom) / 2) * height };
+}
+
+/**
+ * The view a zoomed model's label is hung from: the camera's own side and height, at the framing's distance and
+ * aim, so the label stays whole where it hangs unzoomed instead of following a corner off the screen.
+ */
+export const heldView = (live: CameraView, framing: CameraView): CameraView => ({
+  ...framing,
+  azimuth: live.azimuth,
+  elevation: live.elevation,
+});
+
 /** A drag turns the model in focus, while there is one standing. */
 export const turnable = (nav: ProjectsNav) => nav.mode === 'focus' && nav.layer !== 'plano';
 
@@ -539,9 +567,14 @@ export function createProjects(options: ProjectsOptions) {
   const target: CameraView = { ...state };
   /** Where the model in focus is seen from: 3/4 until it is turned by hand. */
   const turn: Angle = { ...FOCUS_VIEW };
-  /** How many times as close as it is framed the model in focus is seen, and whether it was zoomed by hand. */
+  /**
+   * How many times as close as it is framed the model in focus is seen, whether it was zoomed by hand, and the
+   * view that frames it whole from where it is seen now, which its label hangs from while it is zoomed.
+   */
   let zoom = 1;
   let zoomed = false;
+  let framing: CameraView = target;
+  const still = lens();
   const blended: CameraView = { ...state };
   const narrowScreen = matchMedia('(max-width: 767px)');
   const narrow = () => narrowScreen.matches;
@@ -577,6 +610,7 @@ export function createProjects(options: ProjectsOptions) {
    */
   const hold = () => {
     const { width, height } = size();
+    framing = projectsView(row, current, width / height, narrow(), top, turn, shown());
     const limit = zoomLimit(row, current, width / height, narrow(), top, turn, shown());
     zoom = clampZoom(zoom, limit);
     for (const element of zoomers) {
@@ -982,7 +1016,9 @@ export function createProjects(options: ProjectsOptions) {
   const release = (event: PointerEvent) => {
     if (event.pointerId === grip) grip = -1;
     fingers.delete(event.pointerId);
-    if (fingers.size < 2) spread = 0;
+    // A third finger lifted: the pinch goes on from the two still down, as they are now.
+    spread = fingers.size > 1 ? apart() : 0;
+    spreadZoom = zoom;
   };
   options.canvas.addEventListener('pointercancel', release);
   options.canvas.addEventListener('pointerup', (event) => {
@@ -1000,7 +1036,6 @@ export function createProjects(options: ProjectsOptions) {
     }
   });
 
-  const label = new Vector3();
   return {
     /** The camera to draw: the timeline's, with the projects' blended over it. */
     view(s: ExperienceState): CameraView {
@@ -1023,24 +1058,17 @@ export function createProjects(options: ProjectsOptions) {
         built.root.visible = rises[index].value > 0.001;
       });
     },
-    /**
-     * Hangs each label under its plan, from the plan's near left corner (as ExplodedWords does from its layer);
-     * where the camera turns to 3/4, under the sheet's lowest corner, so the label stays off the drawing.
-     */
+    /** Hangs each label under its plan; the label of a model zoomed by hand where it hangs unzoomed. */
     place() {
       camera.updateMatrixWorld();
       const { width, height } = size();
+      if (zoomed) {
+        still.aspect = width / height;
+        poseCamera(still, heldView(target, framing), width, height);
+        still.updateMatrixWorld();
+      }
       row.forEach((sheet, index) => {
-        let bottom = Infinity;
-        for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-          label.set(sheet.x + (dx * sheet.width) / 2, top, sheet.z + (dz * sheet.depth) / 2).project(camera);
-          bottom = Math.min(bottom, label.y);
-        }
-        // The last corner is the near left one.
-        let x = ((label.x + 1) / 2) * width;
-        let y = ((1 - bottom) / 2) * height;
-        // Zoomed by hand, the plan's corners may leave the screen: its label stays inside the margins.
-        if (zoomed && index === current.index) ({ x, y } = inSafeArea(x, y, width, height, safeArea('focus', narrow())));
+        const { x, y } = labelAnchor(sheet, top, zoomed && index === current.index ? still : camera, width, height);
         items[index].style.setProperty('--x', `${x.toFixed(1)}px`);
         items[index].style.setProperty('--y', `${y.toFixed(1)}px`);
       });

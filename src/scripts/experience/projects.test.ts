@@ -11,8 +11,8 @@ import {
   blendView,
   clampZoom,
   cutHeight,
-  FOCUS_VIEW,
-  inSafeArea,
+  heldView,
+  labelAnchor,
   layersOf,
   layerTurn,
   navigate,
@@ -403,16 +403,71 @@ describe('wheelZoom', () => {
   });
 });
 
-describe('inSafeArea', () => {
-  const safe = safeArea('focus', false);
+describe('the label of the plan in focus', () => {
+  const row = rowLayout(SIZES, 50, 8);
+  const focus = (index: number): ProjectsNav => ({ mode: 'focus', index, layer: 'completa' });
+  /** Where a sheet's label hangs, seen from `view` on a screen `width` by `height`. */
+  const hung = (index: number, view: CameraView, width: number, height: number) => {
+    const camera = lens();
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    poseCamera(camera, view, width, height);
+    camera.updateMatrixWorld();
+    return labelAnchor(row[index], -0.4, camera, width, height);
+  };
 
-  it('leaves a label where it hangs inside the margins', () => {
-    expect(inSafeArea(500, 400, 1440, 900, safe)).toEqual({ x: 500, y: 400 });
+  it('hangs under its sheet, inside the margins, at the framing', () => {
+    const safe = safeArea('focus', false);
+    for (let index = 0; index < row.length; index++) {
+      const { x, y } = hung(index, projectsView(row, focus(index), 1440 / 900, false, -0.4), 1440, 900);
+      expect(x).toBeGreaterThanOrEqual(1440 * safe.side - 1e-6);
+      expect(x).toBeLessThan(720);
+      expect(y).toBeGreaterThan(450);
+      expect(y).toBeLessThanOrEqual(900 * (1 - safe.bottom) + 1e-6);
+    }
   });
 
-  it('holds a label hung from a corner zoomed off the screen at the edge of the margins', () => {
-    expect(inSafeArea(-200, 1300, 1440, 900, safe)).toEqual({ x: 1440 * safe.side, y: 900 * (1 - safe.bottom) });
-    expect(inSafeArea(2000, -50, 1440, 900, safe)).toEqual({ x: 1440 * (1 - safe.side), y: 900 * safe.top });
+  it('hangs from the near left corner as the camera sees it, from whichever side the model is turned to', () => {
+    for (const [width, height, narrow] of [[1440, 900, false], [375, 812, true]] as const) {
+      const safe = safeArea('focus', narrow);
+      for (let index = 0; index < row.length; index++) {
+        // In the list and in 3/4, as before: the plan's near left corner, every plan's in the list.
+        const list = projectsView(row, { mode: 'list', index, layer: 'completa' }, width / height, narrow, -0.4);
+        const three = projectsView(row, focus(index), width / height, narrow, -0.4);
+        for (const [view, sheets] of [[list, [0, 1, 2]], [three, [index]]] as const) {
+          for (const sheet of sheets) {
+            const near = corners(view, width / height, row[sheet], -0.4)[1];
+            expect(hung(sheet, view, width, height).x).toBeCloseTo(((near.x + 1) / 2) * width, 6);
+          }
+        }
+        // Turned, it still hangs on the model's left, inside the margins, with the room to its right.
+        for (const azimuth of [1.6, Math.PI, -2.4]) {
+          const view = projectsView(row, focus(index), width / height, narrow, -0.4, { azimuth, elevation: 0.62 });
+          const { x } = hung(index, view, width, height);
+          expect(x).toBeGreaterThanOrEqual(width * safe.side - 1e-6);
+          expect(x).toBeLessThan(width / 2);
+        }
+      }
+    }
+  });
+
+  it('stays where it hangs at the framing while the model is zoomed, from whichever side it is turned to', () => {
+    for (const [width, height, narrow] of [[1440, 900, false], [375, 812, true]] as const) {
+      for (let index = 0; index < row.length; index++) {
+        for (const azimuth of [0.45, 1.6, Math.PI, -2.4]) {
+          const turn = { azimuth, elevation: 0.62 };
+          const framing = projectsView(row, focus(index), width / height, narrow, -0.4, turn);
+          const zoomed = projectsView(row, focus(index), width / height, narrow, -0.4, turn, undefined, 3);
+          expect(hung(index, heldView(zoomed, framing), width, height)).toEqual(hung(index, framing, width, height));
+        }
+      }
+    }
+  });
+
+  it('follows the camera round, and only takes its distance and aim from the framing', () => {
+    const framing = projectsView(row, focus(1), 1440 / 900, false, -0.4);
+    const live = { ...framing, azimuth: 2, elevation: 1, distance: framing.distance / 2, targetX: framing.targetX + 3 };
+    expect(heldView(live, framing)).toEqual({ ...framing, azimuth: 2, elevation: 1 });
   });
 });
 
