@@ -69,7 +69,7 @@ from these numbers; the code stays as it is.
 | `whatsapp.message` | The text the chat starts with |
 | `building.site` | The plot drawn in scene 1 and seen from above in scene 8 (metres) |
 | `building.plan` | The house itself, in [`src/config/plan.ts`](src/config/plan.ts): both floor plans (walls, doors, windows, columns, the stair, rooms, fittings), the grid, the heights, the blade wall that closes the west side and the canopy it carries over the front door, the galería and the terrace. Scene 2 drafts the ground floor plan from it and scene 3 raises every wall, opening and floor from the same numbers |
-| `projects` | The studio's other houses, in [`src/config/projects.ts`](src/config/projects.ts), one file each under `src/config/projects/`: name (the label reads "Casa {name}"), place, area, status (`Construida`, `En obra` or `Proyecto`), the sheet the plan is drafted on, and its floor plans in the same terms as `building.plan` (the upper floor, blade, canopy, galería and terrace may be left out; an L-shaped or courtyard floor gives its `footprint`). "Ver otros proyectos" in scene 7 drafts them in a row on the table. [`projects.test.ts`](src/config/projects.test.ts) holds every plan to the rules the main house passes, checks the drawing fits its sheet and the stated area matches the plan within 10%; `pnpm dev` shows each sheet full size at `/dev/<id>` |
+| `projects` | The studio's other houses, in [`src/config/projects.ts`](src/config/projects.ts), one file each under `src/config/projects/`: name (the label reads "Casa {name}"), place, area, status (`Construida`, `En obra` or `Proyecto`), the sheet the plan is drafted on, and its floor plans in the same terms as `building.plan` (the upper floor, blade, canopy, galería and terrace may be left out; an L-shaped or courtyard floor gives its `footprint`). "Ver otros proyectos" in scene 7 drafts them in a row on the table, and the house in focus rises from the same plan as a balsa model. [`projects.test.ts`](src/config/projects.test.ts) holds every plan to the rules the main house passes, checks the drawing fits its sheet and the stated area matches the plan within 10%; `pnpm dev` shows each sheet full size at `/dev/<id>` |
 | `materials.*` | Concrete, wood, glass, the warm interior light and the balsa of the model |
 
 **Before publishing:** `whatsapp.number` is a placeholder
@@ -118,12 +118,16 @@ CSS variable names.
 - **Other projects.** Under the model's sentence, "Ver otros proyectos"
   pauses the guided scroll and slides the camera to a row of the studio's
   other houses on the table, each plan drafted like the one in scene 2.
-  A click or tap brings one plan into focus; the arrow keys, the pager and a
-  sideways swipe move along the row; Escape or "Volver" steps back to the
-  list and then to the house, where the scroll resumes from the same place.
+  A click or tap brings one plan into focus: the camera turns to 3/4, the
+  other plans fade, and the house rises from its plan as a balsa model, raised
+  by `deriveModel` in [`params.ts`](src/scripts/experience/building/params.ts)
+  from the same numbers as its sheet, the way the main house is. The arrow
+  keys, the pager and a sideways swipe move along the row, sinking one model
+  and raising the next; Escape or "Volver" steps back to the list and then to
+  the house, where the scroll resumes from the same place.
   [`projects.ts`](src/scripts/experience/projects.ts) blends its camera over
   the timeline's, so the two never fight. The sheets are drawn on the first
-  visit, not at boot.
+  visit and each model on its first focus, not at boot.
 - **One custom shader.** [`materialWave.ts`](src/scripts/experience/building/materialWave.ts)
   patches the standard material. It handles the extrusion, the three material
   waves (concrete, wood, glass), the warm interior and the balsa model, so
@@ -139,7 +143,8 @@ CSS variable names.
 - **Reduced motion:** the building stands finished from the start, and only
   the light follows the scroll. The scroll stays the browser's own, with no
   guided glide. The other projects open and change with a fade through the
-  base colour instead of a camera move.
+  base colour instead of a camera move, and a model stands at once instead
+  of rising.
 - **Keyboard:** the WhatsApp link is reachable with Tab. Focusing it scrolls
   to the closing scene. "Ver otros proyectos" works the same way for the model's
   scene; once open, Tab moves among the plans, the arrows step between them and

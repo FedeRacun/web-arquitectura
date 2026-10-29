@@ -16,13 +16,13 @@ const { projects } = architect;
 <nav id="otros-proyectos" class="projects" data-projects aria-labelledby="otros-proyectos-titulo">
   <div class="projects-head">
     <h2 id="otros-proyectos-titulo" class="phrase projects-title" tabindex="-1" data-projects-title>
-      Otras casas, otros terrenos.
+      Otros proyectos
     </h2>
     <button type="button" class="projects-back" data-projects-back>
       <svg class="projects-arrow" viewBox="0 0 30 12" width="30" height="12" aria-hidden="true">
         <path d="M29.5 6H1.5M6 1.5L1.5 6L6 10.5"></path>
       </svg>
-      <span class="projects-back-house">Volver a la casa</span>
+      <span class="projects-back-house">Volver al sitio</span>
       <span class="projects-back-list">Volver a la lista</span>
     </button>
   </div>
@@ -334,6 +334,31 @@ const { projects } = architect;
     transition:
       opacity 1.2s var(--ease-settle) 0.6s,
       visibility 0s linear 0.6s;
+  }
+
+  /*
+   * In focus only the plan on screen keeps its label: the others fade with their sheets. They stay in the tab
+   * order, and reaching one brings its plan into focus, but a pointer passes through them.
+   */
+  :global(.js-experience) .projects[data-mode='focus'] .projects-item:not(:has([aria-current])) {
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-settle);
+  }
+
+  :global(.js-experience) .projects[data-mode='focus'] .projects-item:not(:has([aria-current])) .projects-label {
+    pointer-events: none;
+  }
+
+  /* A step in focus brings the next plan's label in with its sheet, not after the row's first drafting. */
+  :global(.js-experience) .projects[data-mode='focus'] .projects-item:has([aria-current]) {
+    transition: opacity 0.9s var(--ease-settle) 0.3s;
+  }
+
+  /* Back from a plan the row is already drafted, so the labels return with their sheets instead of after the ink. */
+  :global(.js-experience) .projects[data-mode='list'][data-seen] .projects-item {
+    transition:
+      opacity 0.9s var(--ease-settle) 0.3s,
+      visibility 0s linear 0.3s;
   }
 
   /* The veil the reduced-motion crossfade fades the frame to. */

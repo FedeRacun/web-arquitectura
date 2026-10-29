@@ -361,6 +361,7 @@ export async function startExperience(dom: ExperienceDom, quality: Quality) {
     scroll,
     font,
     colors: { bone: BONE, board: GROUND },
+    materials: architect.materials,
     lowDetail,
     shadows: quality.shadows,
     reducedMotion: quality.reducedMotion,
