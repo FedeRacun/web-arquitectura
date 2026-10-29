@@ -1,7 +1,7 @@
 # Feature: Del trazo al volumen — scroll-built 3D site for architects
 
 Objective: build the full 8-scene one-page site described in the brief "Del trazo al volumen" (Oct 28, 2026).
-Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (github.com/FedeRacun/web-arquitectura, L45); from S27 on, one branch per piece with a PR against `main` (`feat/textos-proceso` S27, `feat/otros-proyectos` S28, `feat/maquetas-proyectos` S29) · Delivery: work-unit commits on the branch; pushing a branch, opening or merging a PR and deploying (Cloudflare Workers Builds) are the user's call · Test runner: Vitest (pure modules) + `astro check` + `astro build` + JS budget script + browser inspection.
+Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (github.com/FedeRacun/web-arquitectura, L45); from S27 on, one branch per piece with a PR against `main` (`feat/textos-proceso` S27, `feat/otros-proyectos` S28, `feat/maquetas-proyectos` S29, `claude/casas-360-capas-multiples-6329b7` S30–S31) · Delivery: work-unit commits on the branch; pushing a branch, opening or merging a PR and deploying (Cloudflare Workers Builds) are the user's call · Test runner: Vitest (pure modules) + `astro check` + `astro build` + JS budget script + browser inspection.
 
 ## Specs
 
@@ -45,6 +45,8 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
   Amends the brief's phrases in S3, S5, S6, S9 and S10, and S24's layer roles. The scene-1 headline stays the element painted under the preloader (S23).
 - **S28 Other projects, one slide to the side (L44, L47).** "El sitio deberia poder llevar a otros proyectos del arquitecto. Se me ocurre que en alguno de los pasos del scroll muestre algo como "conocer mas proyectos" y que dentro del sitio se "desplace" a otro sector, a la derecha por ejemplo, dejando fuera de la vista el plano del edificio principal y abriendo lugar a toda una lista de planos" Approved design (L47): in the mesa scene a "Ver otros proyectos →" button pauses the guided scroll, the camera rises over the table and slides right, the model leaves the frame, and a row of three plans of other houses is drafted on the table with the main plan's ink sweep, under "Otros proyectos" (L59) and "← Volver al sitio" (L58). Each plan: "Casa [nombre] · [localidad] · [m²] m²" and a status (Construida, En obra, Proyecto). A click brings the camera over that plan until it reads whole; arrows move between plans; Escape or "Volver" go back to the list, then to the house, with the scroll where it was and the focus on the button. Mobile: one plan per screen. Reduced motion: a crossfade. No WebGL: a real HTML list. Data in `src/config/projects.ts`; three houses of different typologies, each grounded on a published modern plan (cited, not traced) and audited by the architect reviewer, as S25. Branch `feat/otros-proyectos`, after S27's PR is merged.
 - **S29 Each other project's model rises when its plan is in focus (L55).** "Podemos armar la maqueta 3D de los otros proyectos?" Chosen option (L55), verbatim: "Sube sola al enfocar" — "Al enfocar un plano, la maqueta sube sola y la cámara gira a 3/4; al volver a la lista se baja. Hay un control menos, pero el plano ya no se lee de frente en el foco." Each house is raised from the same plan its sheet draws, as the main house is (S25): its floors follow the footprint, a patio stays open to the sky, the balsa of the mesa's model (S9). Only the house in focus stands; stepping to another plan lowers one and raises the next; back to the list lowers it. Reduced motion: the model stands at the crossfade's cut, with no rise. Amends S28's focus ("a click brings the camera over that plan until it reads whole"): in focus the camera now looks at the model in 3/4. Branch `feat/maquetas-proyectos`, after PR 2 is merged.
+- **S30 Each other project's model turns all the way round (L60).** "Quiero que las casas de los otros 3 proyectos que no son el principal puedan verse en 360 grados" With a plan in focus, dragging (mouse or touch) turns the camera round the model: sideways without limit, up and down between just over the table and almost overhead. The model stays whole in frame at any angle, at a distance that does not pump while it turns. The motion is heavy, with no bounce; under reduced motion it follows the pointer with no inertia. A tap still picks a plan. On a touch screen a sideways swipe in focus now turns the model instead of stepping (the pager and the arrows still step); in the list it still steps. Two quiet buttons, "Girar a la izquierda" and "Girar a la derecha", turn it 45° for the keyboard, with the hint "Arrastrá para girar la maqueta". Stepping to another plan or going back to the list returns the camera to the 3/4 of S29. Amends S28's swipe in focus. Branch `claude/casas-360-capas-multiples-6329b7`.
+- **S31 Each other project's model by layers (L60, L61).** "y en distintas capas para poder ver plano, planta baja y primer-segundo piso cuando lo haya" Chosen option (L61), verbatim: "Maqueta que se destapa" — "Como una maqueta física a la que le sacás el techo: "Planta baja" corta la casa a 1,20 m del piso y deja ver los ambientes; "Planta alta" muestra la planta baja entera y el piso de arriba cortado. Reusa el corte que ya existe, sin tocar la geometría que comparte con la casa principal." In focus a bar of layers reads, from the line to the volume: "Plano", one entry per floor named as its level ("Planta", "Planta baja", "Planta alta"), "Completa". "Completa" is the default: the model of S29. A floor cuts the model 1.20 m over that floor (`CUT_HEIGHT`), everything below it whole; the camera rises enough to see into the rooms and keeps the angle turned to. "Plano" sinks the model and looks down on the sheet, with no turning. Stepping or going back resets it to "Completa". No house has a second upper floor (the plans hold `ground` and an optional `upper`), so none shows one. Under reduced motion the cut changes at the crossfade. Branch `claude/casas-360-capas-multiples-6329b7`.
 
 ## Tasks
 
@@ -72,6 +74,8 @@ Branch: `feat/del-trazo-al-volumen` for S1–S26, pushed as `main` to `origin` (
 | T20 The side slide: "Ver otros proyectos" in the mesa, the row of drafted plans, focus, keyboard, mobile, reduced motion | S28 | delegated writer (parallel with T18; disjoint files) | done | see L51 |
 | T21 Any house raised from its plan: one storey, footprints, patios open to the sky, optional blade, canopy, galería and terrace | S29 | inline | done | `e9c162c`, see L56; test 159/159 (RED observed first), check 0 errors; main house pinned box for box |
 | T22 A balsa model of each house on its sheet, raised in focus, with the camera in 3/4 | S29 | inline (T21 first: same files' consumer) | done | `16f26b1`, fix `15022ef`, see L56-L57; test 161/161 (RED observed first), check 0 errors, budget 207.3 KB; verifier: 1 blocker fixed and rechecked |
+| T23 Turn the model in focus all the way round: drag, ±45° buttons, a framing that holds at any angle | S30 | inline | done | `549b39a`, fix `e5de2fe`, see L62-L63; test 171/171 (RED observed first), check 0 errors, budget 207.8 KB; verifier: 2 blockers fixed and rechecked |
+| T24 The layers in focus: Plano, each floor cut at 1.20 m, Completa | S31 | inline (T23 first: same files) | done | `46a44a4`, fix `e5de2fe`, see L62-L63; test 183/183 (RED observed first), check 0 errors, budget 208.4 KB; verifier: 1 blocker fixed and rechecked |
 
 Route evidence: no Writer trigger. All scenes share one scene graph and one master timeline, so units are not disjoint edit surfaces; no context backstop reached. RDD: global off (`gentle-ai review mode status`), so no native review.
 
@@ -312,3 +316,54 @@ Route evidence: no Writer trigger. All scenes share one scene graph and one mast
 - **L59 (2026-10-28, S28 copy):**
   - The user asked, verbatim: ""Otras casas, otros terrenos." pondria algo simiar a "Otros proyectos" o "Nuestros proyectos"".
   - The heading now reads "Otros proyectos", the words of the button that opens the view. It drops the period, since it names the view rather than saying a sentence. S28 and DESIGN.md were updated to match.
+- **L60 (2026-10-28, S30-S31 request):**
+  - The user asked, verbatim: "Quiero que las casas de los otros 3 proyectos que no son el principal puedan verse en 360 grados y en distintas capas para poder ver plano, planta baja y primer-segundo piso cuando lo haya".
+  - The data: Casa en L and Casa Patio have one floor ("Planta", "Planta baja"); Entre Medianeras has two ("Planta baja", "Planta alta"). `LevelId` holds only `ground` and `upper`, so a second upper floor is out of this scope.
+  - The camera rig only looks at its target from an azimuth, an elevation and a distance, so turning writes the projects' private `target`; no OrbitControls. The canvas is `touch-action: pan-y` and a touch swipe in focus stepped, so both give way to the drag while it can turn.
+- **L61 (2026-10-28, S31 decision):**
+  - Asked how a floor should look, the user chose "Maqueta que se destapa" over "Pisos sueltos" (each floor alone, which would tag every part with its floor in `deriveModel`, shared with the main house).
+  - The cut is the `uGrow` the rise already drives: vertices above it are pressed down to it and parts that start above it vanish, so no geometry changes and `params.ts`, `plan.ts` and `materialWave.ts` stay as they are.
+- **L62 (2026-10-28, T23-T24):**
+  - **T23 `549b39a`:**
+    - Pure: `orbit` (half a turn across the screen; elevation 0.2 to 1.4), `wrapAngle`, `nearestTurn`, `released` (tap picks; a touch swipe steps only in the list) and `dragging` (over 10 px).
+    - `frameBox(..., round)` frames the circle the plan turns in, as a 32-gon drawn round it and turned with the camera, so the distance and the band are the same at every azimuth. A first try took the farthest of 16 fixed azimuths; between them the box overflowed the margins by up to 0.005 NDC, so it was dropped.
+    - Every frame winds the target's azimuth back between -π and π and shifts the turn by the same whole turns, so a glide never spins round to undo them; a plan comes into focus at the 3/4 nearest the camera.
+    - The drag captures the pointer and follows with a 0.6 s `power3.out`, or at once under reduced motion. The canvas is `touch-action: none` while `:root[data-projects='focus']`.
+    - **RED:** 9 tests (`orbit`, `released`, `wrapAngle`, `nearestTurn` not functions; the framing ignored the angle).
+  - **T24 `46a44a4`:**
+    - Pure: `ProjectsNav.layer`, `navigate`'s `layer` action (every plan comes into focus whole; the plan already in focus keeps its layer), `layersOf`, `cutHeight` (`levelHeights(plan, id).floor + CUT_HEIGHT`), `layerTurn` (a floor is seen from at least 0.9 rad), `turnable`, and `standing` false for the plan.
+    - Each model has a tweened height (1.4 s on the settle curve); `uGrow` is rise × height. The layer buttons are made at runtime from `layersOf`, with the bar's scoping attribute, `aria-pressed`, and a live announcement ("Planta baja, Casa …").
+    - Narrow screens: the layers sit over the pager; the turn buttons flank the pager and the hint gives way; the focus margin below went from 0.26 to 0.28. At 375×640 the label, the layers and the pager no longer overlap (measured rects).
+    - **RED:** 12 tests (no `layersOf`, `cutHeight`, `layerTurn`, `turnable`; `navigate` without a layer).
+  - **Captures** (headless Chrome over CDP on the dev server, scratchpad `t23/`, `t24/`): drag left, down and low; ±45°; back to the list; every layer of the three houses; Plano ignoring a drag; reduced motion; 375×812 and 375×640. Console clean.
+  - **Risk:** item 4 (the drag, the turn buttons and the layer cut against the focus glide, the rise and the reduced-motion cuts) and item 6 (the WebGL interaction has no unit test). An independent verifier was launched on `8c9e22e..46a44a4`.
+- **L63 (2026-10-28, T23-T24 verifier and correction):**
+  - **Verdict:** every S30 and S31 item passes on the three houses at 1440×900 and 375×812 touch, and S28/S29 still hold. The verifier hooked the WebGL `viewMatrix` uploads for the camera's yaw and elevation per frame on desktop:
+    - a quarter screen turns 0.785 rad, with no limit;
+    - the elevation stays between 0.20 and 1.40;
+    - the height holds to 3 decimals over two turns;
+    - five fast presses turn 3.927 rad one way;
+    - the cuts reach 1.55 m on Entre Medianeras' ground floor;
+    - every reduced-motion change is one jump under the veil.
+  - Races were clean: fast layer clicks, a cut mid-rise, a drag in the glide, Escape mid-drag. After several turns, the way back never unwinds them, and the scroll resumes. The plain page has no layer or turn controls.
+  - **Blockers:**
+    - B1: back to the list from a cut layer, or from Plano, announced "Completa, …".
+    - B2: a second finger reset the press origin before the `isPrimary` guard, so a 3 px move threw the camera to its lowest elevation and about a quarter turn.
+    - B3: the hint was hidden under 768 px, against S30.
+  - **Advisories:**
+    - A1: Escape from a layer, turn or pager button leaves focus on the body; the pager did so at the baseline.
+    - A2: a model cut at a floor grew back during its sink.
+    - A3: under reduced motion, a pending cut overwrote a drag made under the veil.
+    - A4: forward Tab passes the other labels, which switch the plan in focus, as S28 designed.
+    - A5: a right- or middle-button drag turned the model.
+    - A6: headless Chrome profiles were left in the system temp dir.
+  - **Correction `e5de2fe`:**
+    - A pure `announced(from, to)` names the plan stepped to, or the layer, only while in focus.
+    - `pointerdown` and `pointerup` ignore any pointer but the primary one, and only the main button grips.
+    - On a narrow screen the hint is a row over the layers, the turn buttons sit at the ends of the pager's row, and the focus margin below is 0.30.
+    - A2, A3 and A5 are fixed too: a sinking model is made whole only once down; the veil's cut computes its view then; the button is checked. A1 and A4 are kept as existing behavior. The driver now keeps its profiles in the scratchpad and removes them.
+    - **RED:** `announced is not a function`. **GREEN:** test 183/183, check 0, budget 208.4 KB.
+  - **Recheck** (the verifier's own probes, on `e5de2fe`):
+    - B1: back from "Planta alta" and from Plano leaves the live text as it was; a layer and a step still announce.
+    - B2: the same two-finger sequence moves the label 3 px, against 60 before, and a later swipe still turns.
+    - B3: at 375×812 and 375×640 on the three houses, the hint shows, in the accessibility tree, with no overlap; it hides in Plano.
