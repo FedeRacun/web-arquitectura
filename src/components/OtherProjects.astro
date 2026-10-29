@@ -508,30 +508,46 @@ const { projects } = architect;
       translate: -50% 0;
     }
 
-    /* The layers over the pager; the turn at either end of the pager's row, where the hint gives way. */
+    /* The hint over the layers, over the pager; the turn at either end of the pager's row. */
     :global(.js-experience) .projects-model {
       top: auto;
       inset-inline: 0.5rem;
       bottom: 4svh;
+      grid-template-areas:
+        'hint hint hint'
+        'layers layers layers'
+        'left . right';
+      grid-template-columns: auto 1fr auto;
       gap: 0;
     }
 
     :global(.js-experience) .projects-layers {
+      grid-area: layers;
       justify-content: center;
       gap: 0 1rem;
     }
 
-    .projects-layer {
+    .projects-layer,
+    .projects-hint {
       font-size: 0.6875rem;
       letter-spacing: 0.1em;
     }
 
     :global(.js-experience) .projects-turn {
-      justify-content: space-between;
+      display: contents;
+    }
+
+    .projects-turner[data-projects-turn='1'] {
+      grid-area: left;
+    }
+
+    .projects-turner[data-projects-turn='-1'] {
+      grid-area: right;
     }
 
     .projects-hint {
-      display: none;
+      grid-area: hint;
+      text-align: center;
     }
   }
 

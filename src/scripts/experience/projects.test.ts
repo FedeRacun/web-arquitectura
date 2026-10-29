@@ -7,6 +7,7 @@ import { levelHeights } from './building/plan';
 import { createCameraRig, lens, poseCamera, type CameraView } from './camera';
 import { createGuide } from './guide';
 import {
+  announced,
   blendView,
   cutHeight,
   FOCUS_VIEW,
@@ -307,6 +308,23 @@ describe('the view of a layer', () => {
       inside(cut, 1.6);
     });
   }
+});
+
+describe('announced', () => {
+  const focus = (index: number, layer: ProjectsNav['layer']): ProjectsNav => ({ mode: 'focus', index, layer });
+
+  it('names the plan stepped to, and the layer shown in focus', () => {
+    expect(announced(focus(1, 'ground'), focus(2, 'completa'))).toBe('project');
+    expect(announced({ mode: 'list', index: 0, layer: 'completa' }, { mode: 'list', index: 1, layer: 'completa' })).toBe('project');
+    expect(announced(focus(1, 'completa'), focus(1, 'upper'))).toBe('layer');
+    expect(announced(focus(1, 'upper'), focus(1, 'plano'))).toBe('layer');
+  });
+
+  it('says nothing of the layer on the way back to the list, where there is none', () => {
+    expect(announced(focus(1, 'upper'), { mode: 'list', index: 1, layer: 'completa' })).toBeNull();
+    expect(announced(focus(1, 'plano'), { mode: 'list', index: 1, layer: 'completa' })).toBeNull();
+    expect(announced({ mode: 'list', index: 1, layer: 'completa' }, focus(1, 'completa'))).toBeNull();
+  });
 });
 
 describe('released', () => {

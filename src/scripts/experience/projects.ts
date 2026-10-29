@@ -85,7 +85,7 @@ export function blendView(from: CameraView, to: CameraView, t: number, out: Came
 
 /**
  * Margins the framed sheets keep clear, as fractions of the screen: the heading above, the labels below; in
- * focus on a narrow screen, the label over the layers, over the pager and the turn.
+ * focus on a narrow screen, the label over the hint and the layers, over the pager and the turn.
  */
 export interface Safe {
   top: number;
@@ -95,7 +95,7 @@ export interface Safe {
 
 const SAFE: Record<'list' | 'focus', Record<'wide' | 'narrow', Safe>> = {
   list: { wide: { top: 0.24, bottom: 0.16, side: 0.06 }, narrow: { top: 0.3, bottom: 0.26, side: 0.06 } },
-  focus: { wide: { top: 0.17, bottom: 0.14, side: 0.05 }, narrow: { top: 0.2, bottom: 0.28, side: 0.04 } },
+  focus: { wide: { top: 0.17, bottom: 0.14, side: 0.05 }, narrow: { top: 0.2, bottom: 0.3, side: 0.04 } },
 };
 
 export const safeArea = (mode: 'list' | 'focus', narrow: boolean) => SAFE[mode][narrow ? 'narrow' : 'wide'];
@@ -330,6 +330,13 @@ export const dragging = (dx: number, dy: number) => Math.hypot(dx, dy) > TAP;
 
 /** Only the house whose plan is in focus stands on it, unless its plan alone is shown. */
 export const standing = (nav: ProjectsNav, index: number) => nav.mode === 'focus' && nav.index === index && nav.layer !== 'plano';
+
+/** What a move from `from` to `to` tells a screen reader: the plan stepped to, or the layer shown in focus. */
+export function announced(from: ProjectsNav, to: ProjectsNav) {
+  if (to.index !== from.index) return 'project';
+  if (from.mode === 'focus' && to.mode === 'focus' && to.layer !== from.layer) return 'layer';
+  return null;
+}
 
 /** A drag turns the model in focus, while there is one standing. */
 export const turnable = (nav: ProjectsNav) => nav.mode === 'focus' && nav.layer !== 'plano';
@@ -580,7 +587,8 @@ export function createProjects(options: ProjectsOptions) {
     target.azimuth = wound;
     const view = projectsView(row, current, width / height, narrow(), top, turn, shown());
     if (immediate) Object.assign(target, view);
-    else if (reducedMotion) crossfade(() => Object.assign(target, view));
+    // At the veil's cut, the view as it is then: a drag made under the veil is not undone by it.
+    else if (reducedMotion) crossfade(() => Object.assign(target, projectsView(row, current, width / height, narrow(), top, turn, shown())));
     else gsap.to(target, { ...view, duration, ease: SETTLE, onUpdate: requestRender });
     requestRender();
   };
@@ -622,7 +630,7 @@ export function createProjects(options: ProjectsOptions) {
       // Laid down into its plan, a model keeps its height until it stands again.
       if (height !== goal.height && (rise || current.mode !== 'focus')) {
         goal.height = height;
-        ease(heights[index], height, CUT);
+        ease(heights[index], height, rise ? CUT : { ...CUT, delay: SINK.duration });
       }
       if (presence !== goal.presence) {
         goal.presence = presence;
@@ -706,6 +714,7 @@ export function createProjects(options: ProjectsOptions) {
       turn.elevation = FOCUS_VIEW.elevation;
     }
     if (layered) Object.assign(turn, layerTurn(turn, next.layer));
+    const news = announced(current, next);
     current = next;
     // Once a plan has been in focus the row is drafted: back in the list its labels return with their sheets.
     if (next.mode === 'focus') panel.dataset.seen = '';
@@ -714,8 +723,8 @@ export function createProjects(options: ProjectsOptions) {
     if (reducedMotion) crossfade(arrange);
     else arrange();
     if (!live) return;
-    if (stepped) live.textContent = [...labels[current.index].children].map((part) => part.textContent).join(', ');
-    else if (layered) {
+    if (news === 'project') live.textContent = [...labels[current.index].children].map((part) => part.textContent).join(', ');
+    else if (news === 'layer') {
       const layer = layersOf(options.projects[current.index].plan).find(({ id }) => id === current.layer);
       live.textContent = `${layer?.name}, ${labels[current.index].querySelector('.projects-name')?.textContent}`;
     }
@@ -823,10 +832,12 @@ export function createProjects(options: ProjectsOptions) {
   let grip = -1;
   let gripX = 0;
   let gripY = 0;
+  // Only the first finger counts: a second one, as in a pinch, neither moves where the press began nor picks.
   options.canvas.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary) return;
     downX = gripX = event.clientX;
     downY = gripY = event.clientY;
-    if (!turnable(current) || !event.isPrimary) return;
+    if (!turnable(current) || event.button !== 0) return;
     grip = event.pointerId;
     options.canvas.setPointerCapture(event.pointerId);
   });
@@ -843,7 +854,7 @@ export function createProjects(options: ProjectsOptions) {
   options.canvas.addEventListener('pointercancel', release);
   options.canvas.addEventListener('pointerup', (event) => {
     release(event);
-    if (current.mode === 'closed') return;
+    if (!event.isPrimary || current.mode === 'closed') return;
     const action = released(current.mode, event.clientX - downX, event.clientY - downY, event.pointerType);
     if (action?.type === 'pick') {
       const index = sheetAt(event.clientX, event.clientY);
