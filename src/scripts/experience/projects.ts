@@ -291,6 +291,9 @@ export function navigate(nav: ProjectsNav, action: ProjectsAction, count: number
   }
 }
 
+/** The floor the sheet draws: the one a layer cuts, the one chosen for the plan alone, the ground floor under the whole house. */
+export const sheetFloor = (layer: LayerId, floor: LevelId): LevelId => (layer === 'plano' ? floor : layer === 'completa' ? 'ground' : layer);
+
 /** A house's layers, from the line to the volume: its plan, each of its floors by its name, the whole house. */
 export function layersOf(plan: SheetPlan): { id: LayerId; name: string }[] {
   return [
@@ -534,6 +537,7 @@ export function createProjects(options: ProjectsOptions) {
   const turners = [...nav.querySelectorAll<HTMLElement>('[data-projects-turn]')];
   const zoomers = [...nav.querySelectorAll<HTMLElement>('[data-projects-zoom]')];
   const layerBar = nav.querySelector<HTMLElement>('[data-projects-layers]');
+  const floorBar = nav.querySelector<HTMLElement>('[data-projects-floors]');
   const items = [...nav.querySelectorAll<HTMLElement>('[data-project]')];
   const total = options.projects.length;
 
@@ -592,19 +596,61 @@ export function createProjects(options: ProjectsOptions) {
       return sheet;
     }));
 
-  /** The plan read alone, redrawn sharper the first time it is, and kept so until another one is: one at a time. */
-  let sharp: { index: number; texture: CanvasTexture } | null = null;
-  const sharpen = (index: number) => {
-    if (!sheets || sharp?.index === index) return;
-    if (sharp) {
-      sheets[sharp.index].uniforms.uMap.value = sheets[sharp.index].texture;
-      sharp.texture.dispose();
+  /** The floor each sheet is drawn at; the ground floor's texture is the sheet's own, the others are drawn when first read. */
+  const floors: LevelId[] = options.projects.map(() => 'ground');
+  const floorTextures = new Map<string, CanvasTexture>();
+  const baseTexture = (index: number, level: LevelId) => {
+    if (level === 'ground') return sheets![index].texture;
+    const key = `${index}:${level}`;
+    let texture = floorTextures.get(key);
+    if (!texture) {
+      texture = drawSheet(options.projects[index].plan, options.projects[index].site, { ...drawing(index), level });
+      options.renderer.initTexture(texture);
+      floorTextures.set(key, texture);
     }
+    return texture;
+  };
+
+  /** The plan read alone, redrawn sharper the first time it is, and kept so until another one is: one at a time. */
+  let sharp: { index: number; level: LevelId; texture: CanvasTexture } | null = null;
+  const paint = (index: number) => {
+    const level = floors[index];
+    sheets![index].uniforms.uMap.value = sharp?.index === index && sharp.level === level ? sharp.texture : baseTexture(index, level);
+  };
+  const sharpen = (index: number, level: LevelId) => {
+    if (!sheets || (sharp?.index === index && sharp.level === level)) return;
     const base = drawing(index);
-    const texture = drawSheet(options.projects[index].plan, options.projects[index].site, { ...base, pixelsPerMetre: base.pixelsPerMetre * SHARP });
+    const texture = drawSheet(options.projects[index].plan, options.projects[index].site, { ...base, pixelsPerMetre: base.pixelsPerMetre * SHARP, level });
     options.renderer.initTexture(texture);
-    sheets[index].uniforms.uMap.value = texture;
-    sharp = { index, texture };
+    const old = sharp;
+    sharp = { index, level, texture };
+    paint(index);
+    if (old) {
+      old.texture.dispose();
+      if (old.index !== index) paint(old.index);
+    }
+  };
+
+  /** Each sheet draws the floor the view reads: the plan in focus its layer's or the one chosen, every other the ground floor. */
+  const follow = () => {
+    if (!sheets) return;
+    const focus = current.mode === 'focus';
+    sheets.forEach((sheet, index) => {
+      const level = focus && index === current.index ? sheetFloor(current.layer, planFloor) : 'ground';
+      if (floors[index] === level) return;
+      floors[index] = level;
+      paint(index);
+      // The sheet in focus is drafted again on its new floor.
+      if (focus && index === current.index) {
+        gsap.killTweensOf(sheet.uniforms.uDraw);
+        if (reducedMotion) sheet.uniforms.uDraw.value = 1;
+        else {
+          sheet.uniforms.uDraw.value = 0;
+          gsap.to(sheet.uniforms.uDraw, { value: 1, duration: 1.6, ease: 'power1.inOut', onUpdate: requestRender });
+        }
+      }
+    });
+    if (focus && current.layer === 'plano') sharpen(current.index, floors[current.index]);
   };
 
   /** Each house's model, built the first time its plan comes into focus, standing on the plan it is raised from. */
@@ -637,6 +683,8 @@ export function createProjects(options: ProjectsOptions) {
   const goals = houses.map((house) => ({ rise: 0, presence: 1, height: house.height }));
 
   let current: ProjectsNav = { mode: 'closed', index: 0, layer: 'completa' };
+  /** The floor the plan alone is read at; a floor layer sets it, another house starts at the ground floor. */
+  let planFloor: LevelId = 'ground';
   const target: CameraView = { ...state };
   /** Where the model in focus is seen from: 3/4 until it is turned by hand. */
   const turn: Angle = { ...FOCUS_VIEW };
@@ -730,6 +778,43 @@ export function createProjects(options: ProjectsOptions) {
     }
   };
 
+  /** The floors the plan alone can be read at, for a house with more than one; made like the layers, the one read pressed. */
+  let floorsOfIndex = -1;
+  const showFloors = () => {
+    if (!floorBar) return;
+    const plan = options.projects[current.index].plan;
+    floorBar.hidden = !(current.mode === 'focus' && current.layer === 'plano' && plan.upper);
+    if (floorBar.hidden) return;
+    if (floorsOfIndex !== current.index) {
+      floorsOfIndex = current.index;
+      const held = floorBar.contains(document.activeElement);
+      const scope = [...floorBar.attributes].filter(({ name }) => name.startsWith('data-astro-cid'));
+      floorBar.replaceChildren(
+        ...(['ground', 'upper'] as const).map((id) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'projects-layer';
+          for (const { name: attribute, value } of scope) button.setAttribute(attribute, value);
+          button.dataset.floor = id;
+          button.textContent = plan[id]!.name;
+          button.addEventListener('click', () => {
+            if (planFloor === id) return;
+            planFloor = id;
+            follow();
+            show();
+            requestRender();
+            if (live) live.textContent = `${plan[id]!.name}, ${labels[current.index].querySelector('.projects-name')?.textContent}`;
+          });
+          return button;
+        }),
+      );
+      if (held) floorBar.querySelector<HTMLElement>(`[data-floor="${planFloor}"]`)?.focus({ preventScroll: true });
+    }
+    for (const button of floorBar.querySelectorAll<HTMLElement>('[data-floor]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.floor === planFloor));
+    }
+  };
+
   /** The heading, the labels, the way back, the pager and the layers follow the step the view is on. */
   const show = () => {
     const open = current.mode !== 'closed';
@@ -746,6 +831,7 @@ export function createProjects(options: ProjectsOptions) {
     } else {
       delete nav.dataset.layer;
     }
+    showFloors();
     opener.setAttribute('aria-expanded', String(open));
     const single = current.mode === 'focus' || narrow();
     labels.forEach((label, index) => label.toggleAttribute('aria-current', open && single && index === current.index));
@@ -863,6 +949,7 @@ export function createProjects(options: ProjectsOptions) {
 
   function close() {
     current = navigate(current, { type: 'close' }, total);
+    follow();
     hover(-1);
     seal(false);
     show();
@@ -904,11 +991,14 @@ export function createProjects(options: ProjectsOptions) {
       zoomed = false;
     }
     const news = announced(current, next);
+    // A floor layer is the floor the plan alone is read at next; another house starts at the ground floor.
+    if (stepped) planFloor = 'ground';
+    if (next.layer === 'ground' || next.layer === 'upper') planFloor = next.layer;
     current = next;
     // Once a plan has been in focus the row is drafted: back in the list its labels return with their sheets.
     if (next.mode === 'focus') panel.dataset.seen = '';
     show();
-    if (next.mode === 'focus' && next.layer === 'plano') sharpen(next.index);
+    follow();
     if (moved) frame(false);
     if (reducedMotion) crossfade(arrange);
     else arrange();

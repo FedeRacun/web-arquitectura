@@ -1,5 +1,5 @@
 import { CanvasTexture, Color, LinearMipmapLinearFilter, Mesh, PlaneGeometry, ShaderMaterial, type IUniform, type Texture } from 'three';
-import { planDrawing, sheetBounds, type Ink, type PlanDrawing, type Point, type Rect, type SheetFrame, type SheetPlan, type Weight } from './plan';
+import { planDrawing, sheetBounds, type Ink, type LevelId, type PlanDrawing, type Point, type Rect, type SheetFrame, type SheetPlan, type Weight } from './plan';
 
 /*
  * The ground floor plan drafted on the plot at full size, the way a house
@@ -30,6 +30,8 @@ export interface PlanSheetOptions {
   height: number;
   /** Upper bound on the canvas side, the GPU's texture limit. */
   maxSize: number;
+  /** The floor drawn; the ground floor when left out. */
+  level?: LevelId;
 }
 
 /** Line widths in metres on the ground: 0.35, 0.22, 0.14 and 0.09 mm at 1:100. */
@@ -215,7 +217,7 @@ export function sheetLayout(plan: SheetPlan, site: { width: number; depth: numbe
 export function drawSheet(
   plan: SheetPlan,
   site: { width: number; depth: number },
-  options: Pick<PlanSheetOptions, 'pixelsPerMetre' | 'font' | 'offset' | 'maxSize'>,
+  options: Pick<PlanSheetOptions, 'pixelsPerMetre' | 'font' | 'offset' | 'maxSize' | 'level'>,
 ) {
   const scale = Math.min(options.pixelsPerMetre, options.maxSize / Math.max(site.width, site.depth));
   const layout = sheetLayout(plan, site, options.offset, scale);
@@ -223,7 +225,7 @@ export function drawSheet(
   canvas.width = layout.width;
   canvas.height = layout.height;
   const context = canvas.getContext('2d')!;
-  paintPlan(context, planDrawing(plan, layout.frame), layout.toCanvas, scale, options.font);
+  paintPlan(context, planDrawing(plan, layout.frame, options.level), layout.toCanvas, scale, options.font);
 
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearMipmapLinearFilter;

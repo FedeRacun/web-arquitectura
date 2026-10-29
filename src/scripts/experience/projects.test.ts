@@ -26,6 +26,7 @@ import {
   released,
   rowLayout,
   safeArea,
+  sheetFloor,
   standing,
   turnable,
   wheelZoom,
@@ -644,6 +645,19 @@ describe('standing', () => {
     expect(standing({ mode: 'focus', index: 1, layer: 'ground' }, 1)).toBe(true);
     expect(standing({ mode: 'focus', index: 1, layer: 'upper' }, 1)).toBe(true);
     expect(standing({ mode: 'focus', index: 1, layer: 'plano' }, 1)).toBe(false);
+  });
+});
+
+describe('sheetFloor', () => {
+  it('reads the floor a layer cuts, and the floor chosen for the plan alone', () => {
+    expect(sheetFloor('ground', 'upper')).toBe('ground');
+    expect(sheetFloor('upper', 'ground')).toBe('upper');
+    expect(sheetFloor('plano', 'upper')).toBe('upper');
+    expect(sheetFloor('plano', 'ground')).toBe('ground');
+  });
+
+  it('keeps the ground floor under the whole house, which covers the sheet', () => {
+    expect(sheetFloor('completa', 'upper')).toBe('ground');
   });
 });
 

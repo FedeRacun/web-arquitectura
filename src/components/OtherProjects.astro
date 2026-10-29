@@ -55,7 +55,10 @@ const { projects } = architect;
   </div>
 
   <div class="projects-model">
-    <div class="projects-layers" role="group" aria-label="Capas de la maqueta" data-projects-layers></div>
+    <div class="projects-bars">
+      <div class="projects-layers" role="group" aria-label="Capas de la maqueta" data-projects-layers></div>
+      <div class="projects-layers projects-floors" role="group" aria-label="Piso del plano" data-projects-floors hidden></div>
+    </div>
     <div class="projects-turn">
       <button type="button" class="projects-turner" data-projects-turn="1" aria-label="Girar a la izquierda">
         <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
@@ -333,6 +336,10 @@ const { projects } = architect;
     gap: 0 1.5rem;
   }
 
+  :global(.js-experience) .projects-floors[hidden] {
+    display: none;
+  }
+
   .projects-layer {
     min-height: 2.75rem;
     padding: 0;
@@ -556,8 +563,11 @@ const { projects } = architect;
       gap: 0;
     }
 
-    :global(.js-experience) .projects-layers {
+    :global(.js-experience) .projects-bars {
       grid-area: layers;
+    }
+
+    :global(.js-experience) .projects-layers {
       justify-content: center;
       gap: 0 1rem;
     }
