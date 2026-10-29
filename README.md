@@ -131,7 +131,10 @@ CSS variable names.
   house, another layer or the list frames it whole again. On a narrow screen
   the two zoom buttons sit across from "Volver a la lista". Over
   it, its layers read from the line to the volume: "Plano" lays the model down
-  and looks down on the sheet; each floor ("Planta", "Planta baja", "Planta
+  and reads the sheet straight down, north up, with no perspective, redrawn
+  sharper; there the wheel, a pinch and the buttons zoom it up to four times
+  as close, towards the pointer or the fingers, and a drag moves it, never so
+  far that the middle of the screen leaves the sheet; each floor ("Planta", "Planta baja", "Planta
   alta", as its level is named) cuts the model 1.20 m over that floor with the
   same `uGrow` the rise drives, the floors below it whole; "Completa" is the
   whole house, where every plan comes into focus. The

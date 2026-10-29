@@ -9,6 +9,7 @@ import { createGuide } from './guide';
 import {
   announced,
   blendView,
+  clampPan,
   clampZoom,
   cutHeight,
   heldView,
@@ -18,6 +19,8 @@ import {
   navigate,
   nearestTurn,
   orbit,
+  planDrag,
+  planZoomAt,
   present,
   projectsView,
   released,
@@ -373,13 +376,104 @@ describe('zooming the model in focus', () => {
     expect(clampZoom(5, 2.8)).toBe(2.8);
   });
 
-  it('leaves the list and the plan framed as they are', () => {
-    for (const nav of [{ mode: 'list', index: 1, layer: 'completa' } as const, focus(1, 'plano')]) {
-      expect(projectsView(row, nav, 1440 / 900, false, -0.4, turned, undefined, 3)).toEqual(
-        projectsView(row, nav, 1440 / 900, false, -0.4, turned),
-      );
-      expect(zoomLimit(row, nav, 1440 / 900, false, -0.4, turned)).toBe(1);
-    }
+  it('leaves the list framed as it is', () => {
+    const nav = { mode: 'list', index: 1, layer: 'completa' } as const;
+    expect(projectsView(row, nav, 1440 / 900, false, -0.4, turned, undefined, 3, { x: 4, z: 4 })).toEqual(
+      projectsView(row, nav, 1440 / 900, false, -0.4, turned),
+    );
+    expect(zoomLimit(row, nav, 1440 / 900, false, -0.4, turned)).toBe(1);
+  });
+
+  it('takes no pan for a standing model: only the plan is moved', () => {
+    expect(projectsView(row, focus(1), 1440 / 900, false, -0.4, turned, undefined, 2, { x: 4, z: 4 })).toEqual(
+      projectsView(row, focus(1), 1440 / 900, false, -0.4, turned, undefined, 2),
+    );
+  });
+});
+
+describe('the plan straight down', () => {
+  const row = rowLayout(SIZES, 50, 8);
+  const plan = (index: number): ProjectsNav => ({ mode: 'focus', index, layer: 'plano' });
+  const screens = [
+    { width: 1440, height: 900, narrow: false },
+    { width: 375, height: 812, narrow: true },
+  ];
+  const posed = (view: CameraView, width: number, height: number) => {
+    const camera = lens();
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    poseCamera(camera, view, width, height);
+    camera.updateMatrixWorld();
+    return camera;
+  };
+  /** The pixel a point on the sheet lands on. */
+  const at = (view: CameraView, width: number, height: number, x: number, z: number) => {
+    const point = new Vector3(x, -0.4, z).project(posed(view, width, height));
+    return { x: ((point.x + 1) / 2) * width, y: ((1 - point.y) / 2) * height };
+  };
+  /** The point of the sheet under a pixel. */
+  const under = (view: CameraView, width: number, height: number, px: number, py: number) => {
+    const camera = posed(view, width, height);
+    const ndc = [(px / width) * 2 - 1, 1 - (py / height) * 2] as const;
+    const near = new Vector3(ndc[0], ndc[1], -1).unproject(camera);
+    const far = new Vector3(ndc[0], ndc[1], 1).unproject(camera);
+    const t = (-0.4 - near.y) / (far.y - near.y);
+    return { x: near.x + (far.x - near.x) * t, z: near.z + (far.z - near.z) * t };
+  };
+
+  for (const { width, height, narrow } of screens) {
+    it(`looks straight down at the sheet, north up, so it shows true, with no perspective, on a ${narrow ? 'portrait' : 'desktop'} screen`, () => {
+      for (let index = 0; index < row.length; index++) {
+        const view = projectsView(row, plan(index), width / height, narrow, -0.4);
+        expect(view.azimuth).toBe(0);
+        expect(view.elevation).toBeGreaterThan(Math.PI / 2 - 0.01);
+        const s = row[index];
+        const [nw, ne, se, sw] = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([dx, dz]) =>
+          at(view, width, height, s.x + (dx * s.width) / 2, s.z + (dz * s.depth) / 2),
+        );
+        // A true rectangle, north up, to the sheet's own proportions: no edge foreshortened.
+        expect(Math.abs(nw.x - sw.x)).toBeLessThan(0.5);
+        expect(Math.abs(nw.y - ne.y)).toBeLessThan(0.5);
+        expect(Math.abs(ne.x - nw.x - (se.x - sw.x))).toBeLessThan(0.5);
+        expect(nw.y).toBeLessThan(sw.y);
+        expect((ne.x - nw.x) / (sw.y - nw.y)).toBeCloseTo(s.width / s.depth, 2);
+      }
+    });
+
+    it(`zooms up to four times as close, towards the point under the pointer, on a ${narrow ? 'portrait' : 'desktop'} screen`, () => {
+      const framing = projectsView(row, plan(1), width / height, narrow, -0.4);
+      expect(zoomLimit(row, plan(1), width / height, narrow, -0.4)).toBe(4);
+      const [px, py] = [width * 0.35, height * 0.55];
+      const point = under(framing, width, height, px, py);
+      const pan = planZoomAt({ x: 0, z: 0 }, 2, px, py, framing, width, height);
+      const zoomed = projectsView(row, plan(1), width / height, narrow, -0.4, undefined, undefined, 2, pan);
+      expect(zoomed.distance).toBeCloseTo(framing.distance / 2, 9);
+      const after = at(zoomed, width, height, point.x, point.z);
+      expect(after.x).toBeCloseTo(px, 2);
+      expect(after.y).toBeCloseTo(py, 2);
+    });
+
+    it(`moves with a drag like a sheet under the hand, on a ${narrow ? 'portrait' : 'desktop'} screen`, () => {
+      const view = projectsView(row, plan(1), width / height, narrow, -0.4, undefined, undefined, 3);
+      const [px, py] = [width * 0.5, height * 0.45];
+      const point = under(view, width, height, px, py);
+      const pan = planDrag({ x: 0, z: 0 }, -60, 40, view, height);
+      const moved = projectsView(row, plan(1), width / height, narrow, -0.4, undefined, undefined, 3, pan);
+      const after = at(moved, width, height, point.x, point.z);
+      expect(after.x).toBeCloseTo(px - 60, 2);
+      expect(after.y).toBeCloseTo(py + 40, 2);
+    });
+  }
+
+  it('never lets the sheet leave the screen: centred at the framing, and zoomed in, its middle never past its edge', () => {
+    const sheet = row[1];
+    expect(clampPan({ x: 50, z: -50 }, sheet, 1)).toEqual({ x: 0, z: 0 });
+    expect(clampPan({ x: 50, z: -50 }, sheet, 4)).toEqual({ x: (sheet.width / 2) * 0.75, z: (-sheet.depth / 2) * 0.75 });
+    expect(clampPan({ x: 1, z: 2 }, sheet, 4)).toEqual({ x: 1, z: 2 });
+    const framing = projectsView(row, plan(1), 1440 / 900, false, -0.4);
+    const view = projectsView(row, plan(1), 1440 / 900, false, -0.4, undefined, undefined, 4, { x: 50, z: 0 });
+    expect(view.targetX).toBeCloseTo(framing.targetX + (sheet.width / 2) * 0.75, 9);
+    expect(view.targetZ).toBeCloseTo(framing.targetZ, 9);
   });
 });
 

@@ -62,7 +62,8 @@ const { projects } = architect;
           <path d="M4.17 5.13A12 5 0 1 1 4.17 10.87M5.88 13.93L4.17 10.87L7.67 10.92"></path>
         </svg>
       </button>
-      <p class="projects-hint">Arrastrá para girar la maqueta</p>
+      <p class="projects-hint" data-projects-hint="turn">Arrastrá para girar la maqueta</p>
+      <p class="projects-hint" data-projects-hint="plan">Acercá y arrastrá el plano</p>
       <button type="button" class="projects-turner" data-projects-turn="-1" aria-label="Girar a la derecha">
         <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
           <path d="M23.83 5.13A12 5 0 1 0 23.83 10.87M22.12 13.93L23.83 10.87L20.33 10.92"></path>
@@ -367,18 +368,30 @@ const { projects } = architect;
     display: flex;
     align-items: center;
     gap: 0.25rem;
+  }
+
+  :global(.js-experience) .projects-turner {
     transition:
       opacity 0.6s var(--ease-settle),
       visibility 0s linear 0s;
   }
 
-  /* The plan alone has no model to turn. */
-  :global(.js-experience) .projects[data-layer='plano'] .projects-turn {
+  /* The plan alone has no model to turn: it is zoomed, and moved once it is closer. */
+  :global(.js-experience) .projects[data-layer='plano'] .projects-turner {
     opacity: 0;
     visibility: hidden;
     transition:
       opacity 0.6s var(--ease-settle),
       visibility 0s linear 0.6s;
+  }
+
+  .projects-hint[data-projects-hint='plan'],
+  .projects[data-layer='plano'] .projects-hint[data-projects-hint='turn'] {
+    display: none;
+  }
+
+  .projects[data-layer='plano'] .projects-hint[data-projects-hint='plan'] {
+    display: block;
   }
 
   :global(.js-experience) :is(.projects-turner, .projects-zoomer) {
