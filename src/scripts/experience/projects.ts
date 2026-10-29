@@ -1065,9 +1065,13 @@ export function createProjects(options: ProjectsOptions) {
   let grip = -1;
   let gripX = 0;
   let gripY = 0;
-  /** The fingers on the model or the plan in focus; once two are down, how far apart and where between them they were last. */
+  /**
+   * The fingers on the model or the plan in focus; once two are down, how far apart they began and the zoom
+   * then, and where between them they were last.
+   */
   const fingers = new Map<number, { clientX: number; clientY: number }>();
   let spread = 0;
+  let spreadZoom = 1;
   let middle = { x: 0, y: 0 };
   /** A press that became a pinch neither turns, moves nor picks, until every finger is lifted. */
   let pinched = false;
@@ -1089,6 +1093,7 @@ export function createProjects(options: ProjectsOptions) {
         grip = -1;
         pinched = true;
         ({ spread, middle } = pair());
+        spreadZoom = zoom;
       }
     }
     if (!event.isPrimary) return;
@@ -1102,11 +1107,12 @@ export function createProjects(options: ProjectsOptions) {
     if (fingers.has(event.pointerId)) {
       fingers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
       if (spread > 0 && fingers.size > 1 && current.mode === 'focus') {
-        // The plan follows the fingers' middle as they spread, as a sheet under the hand would.
+        // The zoom the spread asks for since the pinch began, held within its limits; the plan follows the
+        // fingers' middle as they spread, as a sheet under the hand would.
         const now = pair();
-        scale(now.spread / spread, now.middle.x, now.middle.y);
+        scale((spreadZoom * now.spread) / spread / zoom, now.middle.x, now.middle.y);
         if (current.layer === 'plano') pan = planDrag(pan, now.middle.x - middle.x, now.middle.y - middle.y, goal(), size().height);
-        ({ spread, middle } = now);
+        middle = now.middle;
         aim();
         return;
       }
@@ -1124,6 +1130,7 @@ export function createProjects(options: ProjectsOptions) {
     // A third finger lifted: the pinch goes on from the two still down, as they are now.
     if (fingers.size > 1) ({ spread, middle } = pair());
     else spread = 0;
+    spreadZoom = zoom;
   };
   options.canvas.addEventListener('pointercancel', release);
   options.canvas.addEventListener('pointerup', (event) => {
