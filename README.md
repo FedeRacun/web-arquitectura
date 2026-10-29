@@ -125,7 +125,12 @@ CSS variable names.
   or finger) turns the camera all the way round the model in focus and up to
   almost overhead, and "Girar a la izquierda" / "Girar a la derecha" turn it
   an eighth of a turn for the keyboard; the framing holds the circle the plan
-  turns in, so the model never leaves the frame or pumps while it turns. The
+  turns in, so the model never leaves the frame or pumps while it turns. Over
+  it, its layers read from the line to the volume: "Plano" lays the model down
+  and looks down on the sheet; each floor ("Planta", "Planta baja", "Planta
+  alta", as its level is named) cuts the model 1.20 m over that floor with the
+  same `uGrow` the rise drives, the floors below it whole; "Completa" is the
+  whole house, where every plan comes into focus. The
   arrow keys and the pager move along the row, and so does a sideways swipe in
   the list (in focus a swipe turns the model), sinking one model and raising
   the next in 3/4; Escape or "Volver" steps back to the list and then to the

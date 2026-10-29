@@ -16,7 +16,7 @@ import type { Project } from '../../config/projects';
 import { createMassing } from './building/massing';
 import { createSharedUniforms, type SharedUniforms } from './building/materialWave';
 import { deriveModel, type MaterialKind } from './building/params';
-import { sheetOffset } from './building/plan';
+import { CUT_HEIGHT, levelHeights, sheetOffset, type LevelId, type SheetPlan } from './building/plan';
 import { createPlanSheet, type PlanSheet } from './building/planSheet';
 import { lens, poseCamera, type CameraView } from './camera';
 import type { Scroll } from './scroll';
@@ -83,7 +83,10 @@ export function blendView(from: CameraView, to: CameraView, t: number, out: Came
   return out;
 }
 
-/** Margins the framed sheets keep clear, as fractions of the screen: the heading above, the labels below. */
+/**
+ * Margins the framed sheets keep clear, as fractions of the screen: the heading above, the labels below; in
+ * focus on a narrow screen, the label over the layers, over the pager and the turn.
+ */
 export interface Safe {
   top: number;
   bottom: number;
@@ -92,7 +95,7 @@ export interface Safe {
 
 const SAFE: Record<'list' | 'focus', Record<'wide' | 'narrow', Safe>> = {
   list: { wide: { top: 0.24, bottom: 0.16, side: 0.06 }, narrow: { top: 0.3, bottom: 0.26, side: 0.06 } },
-  focus: { wide: { top: 0.17, bottom: 0.14, side: 0.05 }, narrow: { top: 0.2, bottom: 0.26, side: 0.04 } },
+  focus: { wide: { top: 0.17, bottom: 0.14, side: 0.05 }, narrow: { top: 0.2, bottom: 0.28, side: 0.04 } },
 };
 
 export const safeArea = (mode: 'list' | 'focus', narrow: boolean) => SAFE[mode][narrow ? 'narrow' : 'wide'];
@@ -108,6 +111,8 @@ const LIST_VIEW: Angle = { azimuth: 0, elevation: 1.12 };
 export const FOCUS_VIEW: Angle = { azimuth: 0.45, elevation: 0.62 };
 /** Turned by hand, the model is seen from just over the table to almost overhead. */
 const ELEVATION = { low: 0.2, high: 1.4 };
+/** A floor cut open is looked into from at least this high, so its rooms read. */
+const INTO_FLOOR = 0.9;
 /** The sides of the polygon drawn round a turning box's circle. */
 const ROUND = 32;
 
@@ -194,10 +199,15 @@ function frameBox(
 
 export type ProjectsMode = 'closed' | 'list' | 'focus';
 
+/** What the plan in focus shows: itself on the table, one floor cut open, or the whole house. */
+export type LayerId = 'plano' | LevelId | 'completa';
+
 export interface ProjectsNav {
   mode: ProjectsMode;
   /** The plan in focus; in the list, the one a step moves from. */
   index: number;
+  /** What the plan in focus shows; anywhere else, the whole house it will rise as. */
+  layer: LayerId;
 }
 
 export type ProjectsAction =
@@ -206,28 +216,62 @@ export type ProjectsAction =
   /** Escape or "Volver": from a plan to the list, from the list to the house. */
   | { type: 'back' }
   | { type: 'focus'; index: number }
-  | { type: 'step'; by: 1 | -1 };
+  | { type: 'step'; by: 1 | -1 }
+  | { type: 'layer'; layer: LayerId };
 
+/** Every plan that comes into focus comes whole; the one already there keeps the layer it shows. */
 export function navigate(nav: ProjectsNav, action: ProjectsAction, count: number): ProjectsNav {
   const clamp = (index: number) => Math.min(Math.max(index, 0), count - 1);
+  const to = (mode: ProjectsMode, index: number): ProjectsNav => ({
+    mode,
+    index,
+    layer: mode === 'focus' && nav.mode === 'focus' && index === nav.index ? nav.layer : 'completa',
+  });
   switch (action.type) {
     case 'open':
-      return nav.mode === 'closed' ? { mode: 'list', index: nav.index } : nav;
+      return nav.mode === 'closed' ? to('list', nav.index) : nav;
     case 'close':
-      return { mode: 'closed', index: nav.index };
+      return to('closed', nav.index);
     case 'back':
-      return { mode: nav.mode === 'focus' ? 'list' : 'closed', index: nav.index };
+      return to(nav.mode === 'focus' ? 'list' : 'closed', nav.index);
     case 'focus':
-      return nav.mode === 'closed' ? nav : { mode: 'focus', index: clamp(action.index) };
+      return nav.mode === 'closed' ? nav : to('focus', clamp(action.index));
     case 'step':
-      return nav.mode === 'closed' ? nav : { mode: nav.mode, index: clamp(nav.index + action.by) };
+      return nav.mode === 'closed' ? nav : to(nav.mode, clamp(nav.index + action.by));
+    case 'layer':
+      return nav.mode === 'focus' ? { ...nav, layer: action.layer } : nav;
   }
 }
 
+/** A house's layers, from the line to the volume: its plan, each of its floors by its name, the whole house. */
+export function layersOf(plan: SheetPlan): { id: LayerId; name: string }[] {
+  return [
+    { id: 'plano', name: 'Plano' },
+    { id: 'ground', name: plan.ground.name },
+    ...(plan.upper ? [{ id: 'upper' as const, name: plan.upper.name }] : []),
+    { id: 'completa', name: 'Completa' },
+  ];
+}
+
+/**
+ * How high a model `height` tall stands for `layer`: a floor is cut 1.20 m over it, where its plan is drawn,
+ * so what is above it is gone and what is below it stands whole; the plan lays the model down into the sheet.
+ */
+export function cutHeight(plan: SheetPlan, layer: LayerId, height: number) {
+  if (layer === 'plano') return 0;
+  if (layer === 'completa') return height;
+  return levelHeights(plan, layer).floor + CUT_HEIGHT;
+}
+
+/** A floor cut open is looked into from high enough to see its rooms, from the side the model was turned to. */
+export const layerTurn = (turn: Angle, layer: LayerId): Angle =>
+  layer === 'ground' || layer === 'upper' ? { ...turn, elevation: Math.max(turn.elevation, INTO_FLOOR) } : turn;
+
 /**
  * Where the camera goes for `nav`: the whole row in the list, or one plan per screen where only one fits;
- * in focus, one plan with its model standing on it, closer, seen from `turn` (3/4 until it is turned by
- * hand) and far enough to stay whole from any side. `y` is the height the sheets lie at.
+ * in focus, one plan with its model standing on it `height` tall (whole, or cut at a floor), closer, seen
+ * from `turn` (3/4 until it is turned by hand) and far enough to stay whole from any side; or, for the
+ * plan, the plan alone, read as on the table. `y` is the height the sheets lie at.
  */
 export function projectsView(
   row: readonly PlacedSheet[],
@@ -236,13 +280,15 @@ export function projectsView(
   narrow: boolean,
   y: number,
   turn: Angle = FOCUS_VIEW,
+  height?: number,
 ) {
   const mode = nav.mode === 'focus' ? 'focus' : 'list';
   const framed = mode === 'list' && !narrow ? row : [row[Math.min(Math.max(nav.index, 0), row.length - 1)]];
   const x: [number, number] = [Math.min(...framed.map((s) => s.x - s.width / 2)), Math.max(...framed.map((s) => s.x + s.width / 2))];
   const z: [number, number] = [Math.min(...framed.map((s) => s.z - s.depth / 2)), Math.max(...framed.map((s) => s.z + s.depth / 2))];
   if (mode === 'list') return frameBox(x, z, [y, y], aspect, safeArea(mode, narrow), LIST_VIEW);
-  return frameBox(x, z, [y, y + framed[0].height], aspect, safeArea(mode, narrow), turn, true);
+  if (nav.layer === 'plano') return frameBox(x, z, [y, y], aspect, safeArea(mode, narrow), LIST_VIEW);
+  return frameBox(x, z, [y, y + (height ?? framed[0].height)], aspect, safeArea(mode, narrow), turn, true);
 }
 
 /**
@@ -282,8 +328,11 @@ export function released(mode: 'list' | 'focus', dx: number, dy: number, pointer
 /** Whether a press that has moved `dx`, `dy` pixels is a drag yet. */
 export const dragging = (dx: number, dy: number) => Math.hypot(dx, dy) > TAP;
 
-/** Only the house whose plan is in focus stands on it. */
-export const standing = (nav: ProjectsNav, index: number) => nav.mode === 'focus' && nav.index === index;
+/** Only the house whose plan is in focus stands on it, unless its plan alone is shown. */
+export const standing = (nav: ProjectsNav, index: number) => nav.mode === 'focus' && nav.index === index && nav.layer !== 'plano';
+
+/** A drag turns the model in focus, while there is one standing. */
+export const turnable = (nav: ProjectsNav) => nav.mode === 'focus' && nav.layer !== 'plano';
 
 /** While one plan is in focus the others fade from the table, and are not there to pick. */
 export const present = (nav: ProjectsNav, index: number) => nav.mode !== 'focus' || nav.index === index;
@@ -326,6 +375,8 @@ const SINK = { duration: 0.8, ease: 'power2.in' };
 const FADE = { duration: 0.9, ease: 'power1.inOut' };
 /** A turn button turns the model by an eighth of a turn. */
 const TURN_STEP = Math.PI / 4;
+/** A model is cut open at a floor, or closed again, as the camera settles over it. */
+const CUT = { duration: 1.4, ease: SETTLE };
 
 export type Projects = ReturnType<typeof createProjects>;
 
@@ -344,6 +395,7 @@ export function createProjects(options: ProjectsOptions) {
   const count = nav.querySelector<HTMLElement>('[data-projects-index]');
   const steps = [...nav.querySelectorAll<HTMLElement>('[data-projects-step]')];
   const turners = [...nav.querySelectorAll<HTMLElement>('[data-projects-turn]')];
+  const layerBar = nav.querySelector<HTMLElement>('[data-projects-layers]');
   const items = [...nav.querySelectorAll<HTMLElement>('[data-project]')];
   const total = options.projects.length;
 
@@ -401,7 +453,7 @@ export function createProjects(options: ProjectsOptions) {
     }));
 
   /** Each house's model, built the first time its plan comes into focus, standing on the plan it is raised from. */
-  const models: ({ root: Group; uniforms: SharedUniforms; height: number } | null)[] = houses.map(() => null);
+  const models: ({ root: Group; uniforms: SharedUniforms } | null)[] = houses.map(() => null);
   const model = (index: number) =>
     (models[index] ??= (() => {
       const house = houses[index];
@@ -418,14 +470,18 @@ export function createProjects(options: ProjectsOptions) {
       massing.root.position.set(row[index].x, top, row[index].z);
       massing.root.visible = false;
       group.add(massing.root);
-      return { root: massing.root, uniforms, height: house.height };
+      return { root: massing.root, uniforms };
     })());
-  /** How far each model has risen and how present each plan is, 0..1, and where each is going. */
+  /**
+   * How far each model has risen and how present each plan is, 0..1, how tall each stands (whole, or cut at
+   * a floor, in metres), and where each is going.
+   */
   const rises = houses.map(() => ({ value: 0 }));
   const presences = houses.map(() => ({ value: 1 }));
-  const goals = houses.map(() => ({ rise: 0, presence: 1 }));
+  const heights = houses.map((house) => ({ value: house.height }));
+  const goals = houses.map((house) => ({ rise: 0, presence: 1, height: house.height }));
 
-  let current: ProjectsNav = { mode: 'closed', index: 0 };
+  let current: ProjectsNav = { mode: 'closed', index: 0, layer: 'completa' };
   const target: CameraView = { ...state };
   /** Where the model in focus is seen from: 3/4 until it is turned by hand. */
   const turn: Angle = { ...FOCUS_VIEW };
@@ -455,7 +511,39 @@ export function createProjects(options: ProjectsOptions) {
       .to(veil, { opacity: 0, duration: 0.6, ease: 'power1.inOut' });
   };
 
-  /** The heading, the labels, the way back and the pager follow the step the view is on. */
+  /** How tall the model in focus stands for the layer it shows. */
+  const shown = () => cutHeight(options.projects[current.index].plan, current.layer, houses[current.index].height);
+
+  /** The layers of the plan in focus, made when it comes into focus, the one it shows pressed. */
+  let layersOfIndex = -1;
+  const showLayers = () => {
+    if (!layerBar) return;
+    if (layersOfIndex !== current.index) {
+      layersOfIndex = current.index;
+      const held = layerBar.contains(document.activeElement);
+      // The bar's scoping attribute too, so the component's styles reach the buttons made here.
+      const scope = [...layerBar.attributes].filter(({ name }) => name.startsWith('data-astro-cid'));
+      layerBar.replaceChildren(
+        ...layersOf(options.projects[current.index].plan).map(({ id, name }) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'projects-layer';
+          for (const { name: attribute, value } of scope) button.setAttribute(attribute, value);
+          button.dataset.layer = id;
+          button.textContent = name;
+          button.addEventListener('click', () => go(navigate(current, { type: 'layer', layer: id }, total)));
+          return button;
+        }),
+      );
+      // A step taken from the bar keeps the keyboard there, on the next plan's layer.
+      if (held) layerBar.querySelector<HTMLElement>(`[data-layer="${current.layer}"]`)?.focus({ preventScroll: true });
+    }
+    for (const button of layerBar.querySelectorAll<HTMLElement>('[data-layer]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.layer === current.layer));
+    }
+  };
+
+  /** The heading, the labels, the way back, the pager and the layers follow the step the view is on. */
   const show = () => {
     const open = current.mode !== 'closed';
     if (open) {
@@ -464,6 +552,12 @@ export function createProjects(options: ProjectsOptions) {
     } else {
       delete root.dataset.projects;
       delete nav.dataset.mode;
+    }
+    if (current.mode === 'focus') {
+      nav.dataset.layer = current.layer;
+      showLayers();
+    } else {
+      delete nav.dataset.layer;
     }
     opener.setAttribute('aria-expanded', String(open));
     const single = current.mode === 'focus' || narrow();
@@ -484,7 +578,7 @@ export function createProjects(options: ProjectsOptions) {
     const wound = wrapAngle(target.azimuth);
     turn.azimuth += wound - target.azimuth;
     target.azimuth = wound;
-    const view = projectsView(row, current, width / height, narrow(), top, turn);
+    const view = projectsView(row, current, width / height, narrow(), top, turn, shown());
     if (immediate) Object.assign(target, view);
     else if (reducedMotion) crossfade(() => Object.assign(target, view));
     else gsap.to(target, { ...view, duration, ease: SETTLE, onUpdate: requestRender });
@@ -494,7 +588,7 @@ export function createProjects(options: ProjectsOptions) {
   /** The model in focus turned by hand: the camera follows the drag, heavily, or at once under reduced motion. */
   const aim = () => {
     const { width, height } = size();
-    const view = projectsView(row, current, width / height, narrow(), top, turn);
+    const view = projectsView(row, current, width / height, narrow(), top, turn, shown());
     if (reducedMotion) {
       gsap.killTweensOf(target);
       Object.assign(target, view);
@@ -511,15 +605,24 @@ export function createProjects(options: ProjectsOptions) {
     else gsap.to(value, { value: to, ...how, onUpdate: requestRender });
   };
 
-  /** The house in focus rises and the other plans fade; back in the list every plan returns and every model sinks. */
+  /**
+   * The house in focus rises, whole or cut at a floor, and the other plans fade; its plan alone lays it down.
+   * Back in the list every plan returns and every model sinks, to rise whole next time.
+   */
   const arrange = () => {
     goals.forEach((goal, index) => {
       const rise = standing(current, index) ? 1 : 0;
       const presence = present(current, index) ? 1 : 0;
+      const height = rise ? cutHeight(options.projects[index].plan, current.layer, houses[index].height) : houses[index].height;
       if (rise !== goal.rise) {
         goal.rise = rise;
         if (rise) model(index);
         ease(rises[index], rise, rise ? RISE : SINK);
+      }
+      // Laid down into its plan, a model keeps its height until it stands again.
+      if (height !== goal.height && (rise || current.mode !== 'focus')) {
+        goal.height = height;
+        ease(heights[index], height, CUT);
       }
       if (presence !== goal.presence) {
         goal.presence = presence;
@@ -594,13 +697,15 @@ export function createProjects(options: ProjectsOptions) {
   /** Goes to `next`, moving the camera where it frames something else. */
   function go(next: ProjectsNav) {
     if (next.mode === 'closed') return close();
-    const moved = next.mode !== current.mode || (next.index !== current.index && (next.mode === 'focus' || narrow()));
     const stepped = next.index !== current.index;
+    const layered = next.layer !== current.layer;
+    const moved = next.mode !== current.mode || layered || (stepped && (next.mode === 'focus' || narrow()));
     // A plan comes into focus in 3/4, the short way round from wherever the camera is.
     if (next.mode === 'focus' && (current.mode !== 'focus' || stepped)) {
       turn.azimuth = nearestTurn(target.azimuth, FOCUS_VIEW.azimuth);
       turn.elevation = FOCUS_VIEW.elevation;
     }
+    if (layered) Object.assign(turn, layerTurn(turn, next.layer));
     current = next;
     // Once a plan has been in focus the row is drafted: back in the list its labels return with their sheets.
     if (next.mode === 'focus') panel.dataset.seen = '';
@@ -608,7 +713,12 @@ export function createProjects(options: ProjectsOptions) {
     if (moved) frame(false);
     if (reducedMotion) crossfade(arrange);
     else arrange();
-    if (stepped && live) live.textContent = [...labels[current.index].children].map((part) => part.textContent).join(', ');
+    if (!live) return;
+    if (stepped) live.textContent = [...labels[current.index].children].map((part) => part.textContent).join(', ');
+    else if (layered) {
+      const layer = layersOf(options.projects[current.index].plan).find(({ id }) => id === current.layer);
+      live.textContent = `${layer?.name}, ${labels[current.index].querySelector('.projects-name')?.textContent}`;
+    }
   }
 
   const step = (by: 1 | -1, keyboard = false) => {
@@ -627,7 +737,7 @@ export function createProjects(options: ProjectsOptions) {
   }
   for (const element of turners) {
     element.addEventListener('click', () => {
-      if (current.mode !== 'focus') return;
+      if (!turnable(current)) return;
       turn.azimuth += Number(element.dataset.projectsTurn) * TURN_STEP;
       frame(false, 1.2);
     });
@@ -637,7 +747,8 @@ export function createProjects(options: ProjectsOptions) {
     // Tabbing to a plan that is off screen brings it in.
     label.addEventListener('focus', () => {
       if (current.mode === 'closed' || index === current.index) return;
-      if (current.mode === 'focus' || narrow()) go({ ...current, index });
+      if (current.mode === 'focus') go(navigate(current, { type: 'focus', index }, total));
+      else if (narrow()) go({ ...current, index });
       else current = { ...current, index };
     });
   });
@@ -715,12 +826,12 @@ export function createProjects(options: ProjectsOptions) {
   options.canvas.addEventListener('pointerdown', (event) => {
     downX = gripX = event.clientX;
     downY = gripY = event.clientY;
-    if (current.mode !== 'focus' || !event.isPrimary) return;
+    if (!turnable(current) || !event.isPrimary) return;
     grip = event.pointerId;
     options.canvas.setPointerCapture(event.pointerId);
   });
   options.canvas.addEventListener('pointermove', (event) => {
-    if (event.pointerId !== grip || current.mode !== 'focus' || !dragging(event.clientX - downX, event.clientY - downY)) return;
+    if (event.pointerId !== grip || !turnable(current) || !dragging(event.clientX - downX, event.clientY - downY)) return;
     Object.assign(turn, orbit(turn, event.clientX - gripX, event.clientY - gripY, size().width));
     gripX = event.clientX;
     gripY = event.clientY;
@@ -763,8 +874,8 @@ export function createProjects(options: ProjectsOptions) {
       });
       models.forEach((built, index) => {
         if (!built) return;
-        // The extrusion of scene 3: what the rise has not reached is pressed down into the plan.
-        built.uniforms.uGrow.value = rises[index].value * built.height;
+        // The extrusion of scene 3: what the rise has not reached, or the cut has taken off, is pressed down.
+        built.uniforms.uGrow.value = rises[index].value * heights[index].value;
         built.root.visible = rises[index].value > 0.001;
       });
     },

@@ -2,10 +2,16 @@ import type Lenis from 'lenis';
 import type { VirtualScrollData } from 'lenis';
 import { Vector3 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
+import { projects } from '../../config/projects';
+import { levelHeights } from './building/plan';
 import { createCameraRig, lens, poseCamera, type CameraView } from './camera';
 import { createGuide } from './guide';
 import {
   blendView,
+  cutHeight,
+  FOCUS_VIEW,
+  layersOf,
+  layerTurn,
   navigate,
   nearestTurn,
   orbit,
@@ -15,6 +21,7 @@ import {
   rowLayout,
   safeArea,
   standing,
+  turnable,
   wrapAngle,
   type ProjectsNav,
 } from './projects';
@@ -116,7 +123,7 @@ describe('projectsView', () => {
     it(`frames a whole sheet and its standing model in focus, inside its margins, on a ${screen.name} screen`, () => {
       const aspect = screen.width / screen.height;
       for (let index = 0; index < row.length; index++) {
-        const view = projectsView(row, { mode: 'focus', index }, aspect, screen.narrow, -0.4);
+        const view = projectsView(row, { mode: 'focus', index, layer: 'completa' }, aspect, screen.narrow, -0.4);
         const safe = safeArea('focus', screen.narrow);
         const sheet = row[index];
         for (const point of [...corners(view, aspect, sheet, -0.4), ...corners(view, aspect, sheet, -0.4 + sheet.height)]) {
@@ -130,11 +137,11 @@ describe('projectsView', () => {
   }
 
   it('fits the whole row in the list on a wide screen, and one sheet per screen on a narrow one', () => {
-    const wide = projectsView(row, { mode: 'list', index: 1 }, 1440 / 900, false, -0.4);
+    const wide = projectsView(row, { mode: 'list', index: 1, layer: 'completa' }, 1440 / 900, false, -0.4);
     for (const sheet of row) {
       for (const point of corners(wide, 1440 / 900, sheet, -0.4)) expect(Math.abs(point.x)).toBeLessThanOrEqual(1);
     }
-    const narrow = projectsView(row, { mode: 'list', index: 1 }, 375 / 812, true, -0.4);
+    const narrow = projectsView(row, { mode: 'list', index: 1, layer: 'completa' }, 375 / 812, true, -0.4);
     expect(narrow.targetX).toBeCloseTo(row[1].x);
     for (const sheet of [row[0], row[2]]) {
       for (const point of corners(narrow, 375 / 812, sheet, -0.4)) expect(Math.abs(point.x)).toBeGreaterThan(1);
@@ -142,8 +149,8 @@ describe('projectsView', () => {
   });
 
   it('comes closer for a sheet in focus than for the list, and turns to see its model in 3/4', () => {
-    const list = projectsView(row, { mode: 'list', index: 0 }, 1440 / 900, false, -0.4);
-    const focus = projectsView(row, { mode: 'focus', index: 0 }, 1440 / 900, false, -0.4);
+    const list = projectsView(row, { mode: 'list', index: 0, layer: 'completa' }, 1440 / 900, false, -0.4);
+    const focus = projectsView(row, { mode: 'focus', index: 0, layer: 'completa' }, 1440 / 900, false, -0.4);
     expect(focus.distance).toBeLessThan(list.distance);
     expect(focus.elevation).toBeLessThan(list.elevation);
     expect(focus.azimuth).toBeGreaterThan(0.3);
@@ -159,7 +166,7 @@ describe('projectsView', () => {
         for (const elevation of [0.2, 0.62, 1.4]) {
           for (let step = 0; step < 48; step++) {
             const turn = { azimuth: (step / 48) * 2 * Math.PI - Math.PI, elevation };
-            const view = projectsView(row, { mode: 'focus', index }, aspect, screen.narrow, -0.4, turn);
+            const view = projectsView(row, { mode: 'focus', index, layer: 'completa' }, aspect, screen.narrow, -0.4, turn);
             expect(view.azimuth).toBe(turn.azimuth);
             expect(view.elevation).toBe(elevation);
             for (const point of [...corners(view, aspect, sheet, -0.4), ...corners(view, aspect, sheet, -0.4 + sheet.height)]) {
@@ -177,7 +184,7 @@ describe('projectsView', () => {
   it('keeps the same distance all the way round, so the model does not pump while it turns', () => {
     for (const elevation of [0.2, 0.62, 1.4]) {
       const distances = [0, 0.7, 1.9, 3.1, -2.4].map(
-        (azimuth) => projectsView(row, { mode: 'focus', index: 1 }, 1440 / 900, false, -0.4, { azimuth, elevation }).distance,
+        (azimuth) => projectsView(row, { mode: 'focus', index: 1, layer: 'completa' }, 1440 / 900, false, -0.4, { azimuth, elevation }).distance,
       );
       for (const distance of distances) expect(distance).toBeCloseTo(distances[0], 9);
     }
@@ -206,6 +213,100 @@ describe('orbit', () => {
     expect(low).toBeGreaterThan(0.1);
     expect(low).toBeLessThan(0.3);
   });
+});
+
+describe('the layers of a house', () => {
+  const [enL, entreMedianeras, patio] = projects;
+
+  it('read from the line to the volume: the plan, each floor by its name, the whole house', () => {
+    expect(layersOf(enL.plan)).toEqual([
+      { id: 'plano', name: 'Plano' },
+      { id: 'ground', name: 'Planta' },
+      { id: 'completa', name: 'Completa' },
+    ]);
+    expect(layersOf(entreMedianeras.plan)).toEqual([
+      { id: 'plano', name: 'Plano' },
+      { id: 'ground', name: 'Planta baja' },
+      { id: 'upper', name: 'Planta alta' },
+      { id: 'completa', name: 'Completa' },
+    ]);
+    expect(layersOf(patio.plan).map((layer) => layer.name)).toEqual(['Plano', 'Planta baja', 'Completa']);
+  });
+
+  it('cut each floor 1.20 m over it, as its plan is drawn, and leave the whole house or none of it', () => {
+    for (const { plan } of projects) {
+      for (const { id } of layersOf(plan)) {
+        if (id === 'plano' || id === 'completa') continue;
+        const { floor, ceiling } = levelHeights(plan, id);
+        const cut = cutHeight(plan, id, 9);
+        expect(cut).toBeCloseTo(floor + 1.2, 9);
+        expect(cut).toBeLessThan(ceiling);
+      }
+      expect(cutHeight(plan, 'completa', 9)).toBe(9);
+      expect(cutHeight(plan, 'plano', 9)).toBe(0);
+    }
+  });
+
+  it('take the floors above off a floor, and keep those below it whole', () => {
+    const { plan } = entreMedianeras;
+    // The upper floor's slab starts at `nivel`: under the ground floor's cut it is gone, with all above it.
+    expect(cutHeight(plan, 'ground', 9)).toBeLessThan(levelHeights(plan, 'upper').nivel);
+    // The upper floor's cut is over its own floor, so the ground floor and the slab between stand whole.
+    expect(cutHeight(plan, 'upper', 9)).toBeGreaterThan(levelHeights(plan, 'upper').floor);
+  });
+
+  it('look into a floor from high enough to see its rooms, from the side it was turned to', () => {
+    const turned = { azimuth: 2.1, elevation: 0.4 };
+    for (const layer of ['ground', 'upper'] as const) {
+      const turn = layerTurn(turned, layer);
+      expect(turn.azimuth).toBe(2.1);
+      expect(turn.elevation).toBeGreaterThanOrEqual(0.9);
+      expect(layerTurn({ azimuth: 2.1, elevation: 1.3 }, layer).elevation).toBe(1.3);
+    }
+    expect(layerTurn(turned, 'completa')).toEqual(turned);
+    expect(layerTurn(turned, 'plano')).toEqual(turned);
+  });
+
+  it('only turn while there is a model to turn', () => {
+    expect(turnable({ mode: 'focus', index: 0, layer: 'completa' })).toBe(true);
+    expect(turnable({ mode: 'focus', index: 0, layer: 'ground' })).toBe(true);
+    expect(turnable({ mode: 'focus', index: 0, layer: 'plano' })).toBe(false);
+    expect(turnable({ mode: 'list', index: 0, layer: 'completa' })).toBe(false);
+  });
+});
+
+describe('the view of a layer', () => {
+  const row = rowLayout(SIZES, 50, 8);
+  const screens = [
+    { name: 'desktop', width: 1440, height: 900, narrow: false },
+    { name: 'portrait', width: 375, height: 812, narrow: true },
+  ];
+
+  for (const screen of screens) {
+    it(`looks down on the plan alone for the plan, and holds a cut model closer, on a ${screen.name} screen`, () => {
+      const aspect = screen.width / screen.height;
+      const safe = safeArea('focus', screen.narrow);
+      const sheet = row[1];
+      const inside = (view: CameraView, height: number) => {
+        for (const point of [...corners(view, aspect, sheet, -0.4), ...corners(view, aspect, sheet, -0.4 + height)]) {
+          expect(point.x).toBeGreaterThanOrEqual(-1 + 2 * safe.side - 1e-6);
+          expect(point.x).toBeLessThanOrEqual(1 - 2 * safe.side + 1e-6);
+          expect(point.y).toBeGreaterThanOrEqual(-1 + 2 * safe.bottom - 1e-6);
+          expect(point.y).toBeLessThanOrEqual(1 - 2 * safe.top + 1e-6);
+        }
+      };
+      const turned = { azimuth: 2.1, elevation: 0.95 };
+      const plan = projectsView(row, { mode: 'focus', index: 1, layer: 'plano' }, aspect, screen.narrow, -0.4, turned);
+      expect(plan.azimuth).toBe(0);
+      expect(plan.elevation).toBeGreaterThan(1);
+      inside(plan, 0);
+      const whole = projectsView(row, { mode: 'focus', index: 1, layer: 'completa' }, aspect, screen.narrow, -0.4, turned);
+      const cut = projectsView(row, { mode: 'focus', index: 1, layer: 'ground' }, aspect, screen.narrow, -0.4, turned, 1.6);
+      expect(cut.azimuth).toBe(2.1);
+      expect(cut.distance).toBeLessThanOrEqual(whole.distance);
+      inside(cut, 1.6);
+    });
+  }
 });
 
 describe('released', () => {
@@ -260,32 +361,38 @@ describe('turns of whole circles', () => {
 
 describe('standing', () => {
   it('stands only the house whose plan is in focus', () => {
-    expect(standing({ mode: 'focus', index: 1 }, 1)).toBe(true);
-    expect(standing({ mode: 'focus', index: 1 }, 0)).toBe(false);
-    expect(standing({ mode: 'list', index: 1 }, 1)).toBe(false);
-    expect(standing({ mode: 'closed', index: 1 }, 1)).toBe(false);
+    expect(standing({ mode: 'focus', index: 1, layer: 'completa' }, 1)).toBe(true);
+    expect(standing({ mode: 'focus', index: 1, layer: 'completa' }, 0)).toBe(false);
+    expect(standing({ mode: 'list', index: 1, layer: 'completa' }, 1)).toBe(false);
+    expect(standing({ mode: 'closed', index: 1, layer: 'completa' }, 1)).toBe(false);
+  });
+
+  it('stands it cut at a floor, and lays it down into its plan for the plan', () => {
+    expect(standing({ mode: 'focus', index: 1, layer: 'ground' }, 1)).toBe(true);
+    expect(standing({ mode: 'focus', index: 1, layer: 'upper' }, 1)).toBe(true);
+    expect(standing({ mode: 'focus', index: 1, layer: 'plano' }, 1)).toBe(false);
   });
 });
 
 describe('present', () => {
   it('keeps every plan in the list, and only the one in focus while one is', () => {
-    for (const index of [0, 1, 2]) expect(present({ mode: 'list', index: 1 }, index)).toBe(true);
-    expect(present({ mode: 'focus', index: 1 }, 1)).toBe(true);
-    expect(present({ mode: 'focus', index: 1 }, 0)).toBe(false);
-    expect(present({ mode: 'focus', index: 1 }, 2)).toBe(false);
+    for (const index of [0, 1, 2]) expect(present({ mode: 'list', index: 1, layer: 'completa' }, index)).toBe(true);
+    expect(present({ mode: 'focus', index: 1, layer: 'completa' }, 1)).toBe(true);
+    expect(present({ mode: 'focus', index: 1, layer: 'completa' }, 0)).toBe(false);
+    expect(present({ mode: 'focus', index: 1, layer: 'completa' }, 2)).toBe(false);
   });
 });
 
 describe('navigate', () => {
-  const closed: ProjectsNav = { mode: 'closed', index: 0 };
+  const closed: ProjectsNav = { mode: 'closed', index: 0, layer: 'completa' };
 
   it('opens on the list, and Escape goes from a plan to the list, then closes', () => {
     const list = navigate(closed, { type: 'open' }, 3);
     expect(list.mode).toBe('list');
     const focus = navigate(list, { type: 'focus', index: 2 }, 3);
-    expect(focus).toEqual({ mode: 'focus', index: 2 });
+    expect(focus).toEqual({ mode: 'focus', index: 2, layer: 'completa' });
     const back = navigate(focus, { type: 'back' }, 3);
-    expect(back).toEqual({ mode: 'list', index: 2 });
+    expect(back).toEqual({ mode: 'list', index: 2, layer: 'completa' });
     expect(navigate(back, { type: 'back' }, 3).mode).toBe('closed');
   });
 
@@ -294,8 +401,28 @@ describe('navigate', () => {
     nav = navigate(nav, { type: 'step', by: -1 }, 3);
     expect(nav.index).toBe(0);
     nav = navigate(navigate(nav, { type: 'step', by: 1 }, 3), { type: 'step', by: 1 }, 3);
-    expect(nav).toEqual({ mode: 'focus', index: 2 });
+    expect(nav).toEqual({ mode: 'focus', index: 2, layer: 'completa' });
     expect(navigate(nav, { type: 'step', by: 1 }, 3).index).toBe(2);
+  });
+
+  it('shows a layer of the plan in focus, and only there', () => {
+    const focus: ProjectsNav = { mode: 'focus', index: 1, layer: 'completa' };
+    expect(navigate(focus, { type: 'layer', layer: 'ground' }, 3)).toEqual({ mode: 'focus', index: 1, layer: 'ground' });
+    expect(navigate(focus, { type: 'layer', layer: 'plano' }, 3)).toEqual({ mode: 'focus', index: 1, layer: 'plano' });
+    const list: ProjectsNav = { mode: 'list', index: 1, layer: 'completa' };
+    expect(navigate(list, { type: 'layer', layer: 'ground' }, 3)).toEqual(list);
+    expect(navigate(closed, { type: 'layer', layer: 'ground' }, 3)).toEqual(closed);
+  });
+
+  it('brings every other plan into focus whole, and keeps the layer of the one already there', () => {
+    const cut: ProjectsNav = { mode: 'focus', index: 1, layer: 'upper' };
+    expect(navigate(cut, { type: 'step', by: 1 }, 3)).toEqual({ mode: 'focus', index: 2, layer: 'completa' });
+    expect(navigate(cut, { type: 'focus', index: 0 }, 3)).toEqual({ mode: 'focus', index: 0, layer: 'completa' });
+    expect(navigate(cut, { type: 'back' }, 3)).toEqual({ mode: 'list', index: 1, layer: 'completa' });
+    // A tap on the plan in focus, or a step against the end of the row, changes nothing.
+    expect(navigate(cut, { type: 'focus', index: 1 }, 3)).toEqual(cut);
+    const last: ProjectsNav = { mode: 'focus', index: 2, layer: 'ground' };
+    expect(navigate(last, { type: 'step', by: 1 }, 3)).toEqual(last);
   });
 
   it('ignores steps and picks while closed', () => {

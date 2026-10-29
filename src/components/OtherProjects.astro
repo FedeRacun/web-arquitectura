@@ -55,6 +55,7 @@ const { projects } = architect;
   </div>
 
   <div class="projects-model">
+    <div class="projects-layers" role="group" aria-label="Capas de la maqueta" data-projects-layers></div>
     <div class="projects-turn">
       <button type="button" class="projects-turner" data-projects-turn="1" aria-label="Girar a la izquierda">
         <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
@@ -302,8 +303,8 @@ const { projects } = architect;
   }
 
   /*
-   * The model in focus: how to turn it, where the heading was (the heading only reads over the row).
-   * On a narrow screen, over the pager.
+   * The model in focus: its layers and how to turn it, where the heading was (the heading only reads over
+   * the row). On a narrow screen, over the pager.
    */
   :global(.js-experience) .projects-model {
     position: absolute;
@@ -313,10 +314,60 @@ const { projects } = architect;
     gap: 0.75rem;
   }
 
+  /* The layers read from the line to the volume, one word each; the one shown in copper, over a 1px line. */
+  :global(.js-experience) .projects-layers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+  }
+
+  .projects-layer {
+    min-height: 2.75rem;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: none;
+    color: var(--color-bone);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0.55;
+    cursor: pointer;
+    transition:
+      opacity 0.6s var(--ease-settle),
+      color 0.6s var(--ease-settle),
+      border-color 0.6s var(--ease-settle);
+  }
+
+  .projects-layer:is(:hover, :focus-visible) {
+    opacity: 1;
+  }
+
+  .projects-layer[aria-pressed='true'] {
+    border-bottom-color: var(--color-accent);
+    color: var(--color-accent);
+    opacity: 1;
+  }
+
   :global(.js-experience) .projects-turn {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    transition:
+      opacity 0.6s var(--ease-settle),
+      visibility 0s linear 0s;
+  }
+
+  /* The plan alone has no model to turn. */
+  :global(.js-experience) .projects[data-layer='plano'] .projects-turn {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.6s var(--ease-settle),
+      visibility 0s linear 0.6s;
   }
 
   :global(.js-experience) .projects-turner {
@@ -367,7 +418,7 @@ const { projects } = architect;
       visibility 0s linear 0.6s;
   }
 
-  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager, .projects-model) {
+  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager, .projects-layer, .projects-turner) {
     pointer-events: auto;
   }
 
@@ -457,12 +508,30 @@ const { projects } = architect;
       translate: -50% 0;
     }
 
+    /* The layers over the pager; the turn at either end of the pager's row, where the hint gives way. */
     :global(.js-experience) .projects-model {
       top: auto;
-      left: 50%;
-      bottom: calc(4svh + 3rem);
-      justify-items: center;
-      translate: -50% 0;
+      inset-inline: 0.5rem;
+      bottom: 4svh;
+      gap: 0;
+    }
+
+    :global(.js-experience) .projects-layers {
+      justify-content: center;
+      gap: 0 1rem;
+    }
+
+    .projects-layer {
+      font-size: 0.6875rem;
+      letter-spacing: 0.1em;
+    }
+
+    :global(.js-experience) .projects-turn {
+      justify-content: space-between;
+    }
+
+    .projects-hint {
+      display: none;
     }
   }
 
