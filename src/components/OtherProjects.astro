@@ -54,6 +54,34 @@ const { projects } = architect;
     </button>
   </div>
 
+  <div class="projects-model">
+    <div class="projects-layers" role="group" aria-label="Capas de la maqueta" data-projects-layers></div>
+    <div class="projects-turn">
+      <button type="button" class="projects-turner" data-projects-turn="1" aria-label="Girar a la izquierda">
+        <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
+          <path d="M4.17 5.13A12 5 0 1 1 4.17 10.87M5.88 13.93L4.17 10.87L7.67 10.92"></path>
+        </svg>
+      </button>
+      <p class="projects-hint" data-projects-hint="turn">Arrastrá para girar la maqueta</p>
+      <p class="projects-hint" data-projects-hint="plan">Acercá y arrastrá el plano</p>
+      <button type="button" class="projects-turner" data-projects-turn="-1" aria-label="Girar a la derecha">
+        <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
+          <path d="M23.83 5.13A12 5 0 1 0 23.83 10.87M22.12 13.93L23.83 10.87L20.33 10.92"></path>
+        </svg>
+      </button>
+      <button type="button" class="projects-zoomer" data-projects-zoom="-1" aria-label="Alejar">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M2.5 8H13.5"></path>
+        </svg>
+      </button>
+      <button type="button" class="projects-zoomer" data-projects-zoom="1" aria-label="Acercar">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M2.5 8H13.5M8 2.5V13.5"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
   <p class="sr-only" aria-live="polite" data-projects-live></p>
 </nav>
 <div class="projects-veil" data-projects-veil aria-hidden="true"></div>
@@ -104,6 +132,7 @@ const { projects } = architect;
   /* Controls that only mean something over the scene. */
   .projects-back,
   .projects-pager,
+  .projects-model,
   .projects-veil {
     display: none;
   }
@@ -172,7 +201,9 @@ const { projects } = architect;
   }
 
   .projects-arrow,
-  .projects-step svg {
+  .projects-step svg,
+  .projects-turner svg,
+  .projects-zoomer svg {
     display: block;
     fill: none;
     stroke: currentColor;
@@ -284,6 +315,125 @@ const { projects } = architect;
   }
 
   /*
+   * The model in focus: its layers and how to turn it, where the heading was (the heading only reads over
+   * the row). On a narrow screen, over the pager.
+   */
+  :global(.js-experience) .projects-model {
+    position: absolute;
+    top: 6svh;
+    left: clamp(1.25rem, 6vw, 6rem);
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  /* The layers read from the line to the volume, one word each; the one shown in copper, over a 1px line. */
+  :global(.js-experience) .projects-layers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+  }
+
+  .projects-layer {
+    min-height: 2.75rem;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: none;
+    color: var(--color-bone);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0.55;
+    cursor: pointer;
+    transition:
+      opacity 0.6s var(--ease-settle),
+      color 0.6s var(--ease-settle),
+      border-color 0.6s var(--ease-settle);
+  }
+
+  .projects-layer:is(:hover, :focus-visible) {
+    opacity: 1;
+  }
+
+  .projects-layer[aria-pressed='true'] {
+    border-bottom-color: var(--color-accent);
+    color: var(--color-accent);
+    opacity: 1;
+  }
+
+  :global(.js-experience) .projects-turn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  :global(.js-experience) .projects-turner {
+    transition:
+      opacity 0.6s var(--ease-settle),
+      visibility 0s linear 0s;
+  }
+
+  /* The plan alone has no model to turn: it is zoomed, and moved once it is closer. */
+  :global(.js-experience) .projects[data-layer='plano'] .projects-turner {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.6s var(--ease-settle),
+      visibility 0s linear 0.6s;
+  }
+
+  .projects-hint[data-projects-hint='plan'],
+  .projects[data-layer='plano'] .projects-hint[data-projects-hint='turn'] {
+    display: none;
+  }
+
+  .projects[data-layer='plano'] .projects-hint[data-projects-hint='plan'] {
+    display: block;
+  }
+
+  :global(.js-experience) :is(.projects-turner, .projects-zoomer) {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-bone);
+    cursor: pointer;
+  }
+
+  .projects-turner:is(:hover, :focus-visible),
+  .projects-zoomer:not([aria-disabled='true']):is(:hover, :focus-visible) {
+    color: var(--color-accent);
+  }
+
+  /* Zooming sits apart from turning; it fades where the model is as close, or as far, as it goes. */
+  .projects-zoomer[data-projects-zoom='-1'] {
+    margin-inline-start: 1rem;
+  }
+
+  .projects-zoomer[aria-disabled='true'] {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .projects-hint {
+    margin: 0;
+    white-space: nowrap;
+    padding-inline: 0.5rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  /*
    * What shows at each step. Closed: nothing. The row: the heading, the way back, the labels once
    * their plans are drafted. A plan in focus: the way back, its label and the pager. What is not
    * shown is hidden too, not just transparent, so neither Tab nor the pointer can reach it: visibility
@@ -295,7 +445,7 @@ const { projects } = architect;
     transition: opacity 0.6s var(--ease-settle);
   }
 
-  :global(.js-experience) :is(.projects-back, .projects-item, .projects-pager) {
+  :global(.js-experience) :is(.projects-back, .projects-item, .projects-pager, .projects-model) {
     opacity: 0;
     visibility: hidden;
     transition:
@@ -303,7 +453,7 @@ const { projects } = architect;
       visibility 0s linear 0.6s;
   }
 
-  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager) {
+  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager, .projects-layer, .projects-turner, .projects-zoomer) {
     pointer-events: auto;
   }
 
@@ -328,7 +478,7 @@ const { projects } = architect;
       visibility 0s linear 2.6s;
   }
 
-  :global(.js-experience) .projects[data-mode='focus'] .projects-pager {
+  :global(.js-experience) .projects[data-mode='focus'] :is(.projects-pager, .projects-model) {
     opacity: 1;
     visibility: visible;
     transition:
@@ -392,10 +542,79 @@ const { projects } = architect;
       bottom: 4svh;
       translate: -50% 0;
     }
+
+    /* The hint over the layers, over the pager; the turn at either end of the pager's row. */
+    :global(.js-experience) .projects-model {
+      top: auto;
+      inset-inline: 0.5rem;
+      bottom: 4svh;
+      grid-template-areas:
+        'hint hint hint'
+        'layers layers layers'
+        'left . right';
+      grid-template-columns: auto 1fr auto;
+      gap: 0;
+    }
+
+    :global(.js-experience) .projects-layers {
+      grid-area: layers;
+      justify-content: center;
+      gap: 0 1rem;
+    }
+
+    .projects-layer,
+    .projects-hint {
+      font-size: 0.6875rem;
+      letter-spacing: 0.1em;
+    }
+
+    :global(.js-experience) .projects-turn {
+      display: contents;
+    }
+
+    .projects-turner[data-projects-turn='1'] {
+      grid-area: left;
+    }
+
+    .projects-turner[data-projects-turn='-1'] {
+      grid-area: right;
+    }
+
+    .projects-hint {
+      grid-area: hint;
+      text-align: center;
+    }
+
+    /*
+     * The zoom across from the way back, where the heading's line leaves room, so the controls under the model
+     * take no more height. Without anchors, where the way back sits under a one-line heading.
+     */
+    :global(.js-experience) .projects-zoomer {
+      position: fixed;
+      top: calc(6svh + 2.9375rem);
+      right: 0.5rem;
+    }
+
+    :global(.js-experience) .projects-zoomer[data-projects-zoom='-1'] {
+      right: 3.5rem;
+      margin-inline-start: 0;
+    }
+
+    @supports (anchor-name: --a) {
+      :global(.js-experience) .projects-back {
+        anchor-name: --projects-back;
+      }
+
+      :global(.js-experience) .projects-zoomer {
+        position-anchor: --projects-back;
+        top: anchor(top);
+        height: anchor-size(height);
+      }
+    }
   }
 
   /* Under reduced motion the veil covers every change: nothing waits behind it. */
-  :global(.js-experience.reduced-motion) .projects[data-mode] :is(.projects-title, .projects-back, .projects-item, .projects-pager) {
+  :global(.js-experience.reduced-motion) .projects[data-mode] :is(.projects-title, .projects-back, .projects-item, .projects-pager, .projects-model) {
     transition-delay: 0s;
   }
 </style>

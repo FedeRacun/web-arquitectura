@@ -33,4 +33,9 @@
     height: 100%;
     touch-action: pan-y;
   }
+
+  /* With another project's plan in focus a drag turns its model, so the browser keeps no touch gesture for itself. */
+  :global(:root[data-projects='focus']) canvas {
+    touch-action: none;
+  }
 </style>

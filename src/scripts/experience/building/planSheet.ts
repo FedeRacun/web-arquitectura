@@ -1,4 +1,4 @@
-import { CanvasTexture, Color, LinearMipmapLinearFilter, Mesh, PlaneGeometry, ShaderMaterial, type IUniform } from 'three';
+import { CanvasTexture, Color, LinearMipmapLinearFilter, Mesh, PlaneGeometry, ShaderMaterial, type IUniform, type Texture } from 'three';
 import { planDrawing, sheetBounds, type Ink, type PlanDrawing, type Point, type Rect, type SheetFrame, type SheetPlan, type Weight } from './plan';
 
 /*
@@ -13,7 +13,7 @@ import { planDrawing, sheetBounds, type Ink, type PlanDrawing, type Point, type 
 
 export interface PlanSheet {
   mesh: Mesh<PlaneGeometry, ShaderMaterial>;
-  uniforms: { uDraw: IUniform<number>; uOpacity: IUniform<number> };
+  uniforms: { uDraw: IUniform<number>; uOpacity: IUniform<number>; uMap: IUniform<Texture> };
   /** Uploaded while the preloader still covers the page, not on the first frame that shows it. */
   texture: CanvasTexture;
 }
@@ -211,7 +211,12 @@ export function sheetLayout(plan: SheetPlan, site: { width: number; depth: numbe
   return { width: Math.round(site.width * scale), height: Math.round(site.depth * scale), toCanvas, frame };
 }
 
-export function createPlanSheet(plan: SheetPlan, site: { width: number; depth: number }, options: PlanSheetOptions): PlanSheet {
+/** The plan drawn on its sheet: a canvas the size of the plot, at `pixelsPerMetre` or as many as the GPU takes. */
+export function drawSheet(
+  plan: SheetPlan,
+  site: { width: number; depth: number },
+  options: Pick<PlanSheetOptions, 'pixelsPerMetre' | 'font' | 'offset' | 'maxSize'>,
+) {
   const scale = Math.min(options.pixelsPerMetre, options.maxSize / Math.max(site.width, site.depth));
   const layout = sheetLayout(plan, site, options.offset, scale);
   const canvas = document.createElement('canvas');
@@ -223,6 +228,11 @@ export function createPlanSheet(plan: SheetPlan, site: { width: number; depth: n
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearMipmapLinearFilter;
   texture.anisotropy = 8;
+  return texture;
+}
+
+export function createPlanSheet(plan: SheetPlan, site: { width: number; depth: number }, options: PlanSheetOptions): PlanSheet {
+  const texture = drawSheet(plan, site, options);
 
   const uniforms = {
     uMap: { value: texture },

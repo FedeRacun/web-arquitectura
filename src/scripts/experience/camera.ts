@@ -19,7 +19,7 @@ export interface CameraRig {
   apply(view: CameraView): void;
 }
 
-const FOV = 30;
+export const FOV = 30;
 /** Aspect ratio the scenes were composed at; narrower screens pull back. */
 const COMPOSED_ASPECT = 1.5;
 
