@@ -27,7 +27,8 @@ import type { ExperienceState } from './state';
  * camera rises and slides right to a row of the studio's other houses, each
  * drafted on its own board with the main plan's ink sweep. A click brings one
  * plan into focus: the camera turns to 3/4 and the house rises from its plan
- * as a balsa model, as the main house rose from its own. Escape steps back to
+ * as a balsa model, as the main house rose from its own; a drag or the turn
+ * buttons take the camera all the way round it. Escape steps back to
  * the row, lowering it, then to the house. The camera is blended over the timeline's (`aside`), so
  * the two never fight, and the scroll is stopped while the row is open, so
  * the timeline's values hold still underneath it.
@@ -96,9 +97,19 @@ const SAFE: Record<'list' | 'focus', Record<'wide' | 'narrow', Safe>> = {
 
 export const safeArea = (mode: 'list' | 'focus', narrow: boolean) => SAFE[mode][narrow ? 'narrow' : 'wide'];
 
+/** Where the camera looks at a box from, round it and over it (radians). */
+export interface Angle {
+  azimuth: number;
+  elevation: number;
+}
+
 /** The row is seen as sheets on a table, looking north; a plan in focus in 3/4, its model standing on it. */
-const LIST_VIEW = { azimuth: 0, elevation: 1.12 };
-const FOCUS_VIEW = { azimuth: 0.45, elevation: 0.62 };
+const LIST_VIEW: Angle = { azimuth: 0, elevation: 1.12 };
+export const FOCUS_VIEW: Angle = { azimuth: 0.45, elevation: 0.62 };
+/** Turned by hand, the model is seen from just over the table to almost overhead. */
+const ELEVATION = { low: 0.2, high: 1.4 };
+/** The sides of the polygon drawn round a turning box's circle. */
+const ROUND = 32;
 
 const fitter = lens();
 const corner = new Vector3();
@@ -106,7 +117,9 @@ const corner = new Vector3();
 /**
  * The closest view from `angle` that holds the box (a rectangle on the table, raised to `y[1]`) inside the
  * safe margins. The camera looks at the box's centre, so left to right it is centred by itself; only the
- * distance and the band between the heading and the labels remain.
+ * distance and the band between the heading and the labels remain. `round`: the box is to be turned about
+ * its centre, so the view holds the circle it turns in instead, which looks the same from every side: the
+ * distance and the band stay put whatever the azimuth.
  */
 function frameBox(
   x: readonly [number, number],
@@ -114,7 +127,8 @@ function frameBox(
   y: readonly [number, number],
   aspect: number,
   safe: Safe,
-  angle: { azimuth: number; elevation: number },
+  angle: Angle,
+  round = false,
 ) {
   const view: CameraView = {
     ...angle,
@@ -126,6 +140,18 @@ function frameBox(
     frameY: 0,
     portraitPull: 0,
   };
+  // The box's corners; turning, a polygon round the circle they sweep, wide enough to hold the circle and
+  // turned with the camera (whose azimuth runs the other way round), so it is seen the same from every side.
+  const plan: [number, number][] = [];
+  if (round) {
+    const radius = Math.hypot(x[1] - x[0], z[1] - z[0]) / 2 / Math.cos(Math.PI / ROUND);
+    for (let k = 0; k < ROUND; k++) {
+      const turn = (k / ROUND) * 2 * Math.PI - angle.azimuth;
+      plan.push([view.targetX + radius * Math.cos(turn), view.targetZ + radius * Math.sin(turn)]);
+    }
+  } else {
+    for (const cx of x) for (const cz of z) plan.push([cx, cz]);
+  }
   fitter.aspect = aspect;
   fitter.updateProjectionMatrix();
   const extent = () => {
@@ -135,17 +161,15 @@ function frameBox(
     let right = -Infinity;
     let low = Infinity;
     let high = -Infinity;
-    for (const cx of x) {
+    for (const [cx, cz] of plan) {
       for (const cy of y) {
-        for (const cz of z) {
-          corner.set(cx, cy, cz).project(fitter);
-          // Behind the camera or past its far plane: it does not fit.
-          if (Math.abs(corner.z) > 1) return null;
-          left = Math.min(left, corner.x);
-          right = Math.max(right, corner.x);
-          low = Math.min(low, corner.y);
-          high = Math.max(high, corner.y);
-        }
+        corner.set(cx, cy, cz).project(fitter);
+        // Behind the camera or past its far plane: it does not fit.
+        if (Math.abs(corner.z) > 1) return null;
+        left = Math.min(left, corner.x);
+        right = Math.max(right, corner.x);
+        low = Math.min(low, corner.y);
+        high = Math.max(high, corner.y);
       }
     }
     return { left, right, low, high };
@@ -202,16 +226,61 @@ export function navigate(nav: ProjectsNav, action: ProjectsAction, count: number
 
 /**
  * Where the camera goes for `nav`: the whole row in the list, or one plan per screen where only one fits;
- * in focus, one plan with its model standing on it, closer and in 3/4. `y` is the height the sheets lie at.
+ * in focus, one plan with its model standing on it, closer, seen from `turn` (3/4 until it is turned by
+ * hand) and far enough to stay whole from any side. `y` is the height the sheets lie at.
  */
-export function projectsView(row: readonly PlacedSheet[], nav: ProjectsNav, aspect: number, narrow: boolean, y: number) {
+export function projectsView(
+  row: readonly PlacedSheet[],
+  nav: ProjectsNav,
+  aspect: number,
+  narrow: boolean,
+  y: number,
+  turn: Angle = FOCUS_VIEW,
+) {
   const mode = nav.mode === 'focus' ? 'focus' : 'list';
   const framed = mode === 'list' && !narrow ? row : [row[Math.min(Math.max(nav.index, 0), row.length - 1)]];
   const x: [number, number] = [Math.min(...framed.map((s) => s.x - s.width / 2)), Math.max(...framed.map((s) => s.x + s.width / 2))];
   const z: [number, number] = [Math.min(...framed.map((s) => s.z - s.depth / 2)), Math.max(...framed.map((s) => s.z + s.depth / 2))];
   if (mode === 'list') return frameBox(x, z, [y, y], aspect, safeArea(mode, narrow), LIST_VIEW);
-  return frameBox(x, z, [y, y + framed[0].height], aspect, safeArea(mode, narrow), FOCUS_VIEW);
+  return frameBox(x, z, [y, y + framed[0].height], aspect, safeArea(mode, narrow), turn, true);
 }
+
+/**
+ * The angle a drag of `dx`, `dy` pixels turns the model in focus to, on a screen `width` wide: half a turn
+ * across the screen. Left brings its east side round to the front, as a hand turning it would; down looks
+ * from higher up. Round and round without end; up and down between just over the table and almost overhead.
+ */
+export function orbit(angle: Angle, dx: number, dy: number, width: number): Angle {
+  const rate = Math.PI / width;
+  return {
+    azimuth: angle.azimuth - dx * rate,
+    elevation: Math.min(Math.max(angle.elevation + dy * rate, ELEVATION.low), ELEVATION.high),
+  };
+}
+
+/** The same angle wound back between -π and π. */
+export const wrapAngle = (angle: number) => angle - 2 * Math.PI * Math.ceil((angle - Math.PI) / (2 * Math.PI));
+
+/** `to`, give or take whole turns: the one nearest `from`, so the way there never takes more than half a turn. */
+export const nearestTurn = (from: number, to: number) => from + wrapAngle(to - from);
+
+/** A press moved by this many pixels or fewer is a tap. */
+const TAP = 10;
+
+/**
+ * What a press released `dx`, `dy` pixels from where it went down means: a tap picks a plan; in the list, a
+ * sideways swipe on a touch screen moves along the row. In focus a drag has turned the model, and means no more.
+ */
+export function released(mode: 'list' | 'focus', dx: number, dy: number, pointerType: string) {
+  if (Math.hypot(dx, dy) <= TAP) return { type: 'pick' } as const;
+  if (mode === 'list' && pointerType !== 'mouse' && Math.abs(dx) > 48 && Math.abs(dx) > 1.4 * Math.abs(dy)) {
+    return { type: 'step', by: dx < 0 ? 1 : -1 } as const;
+  }
+  return null;
+}
+
+/** Whether a press that has moved `dx`, `dy` pixels is a drag yet. */
+export const dragging = (dx: number, dy: number) => Math.hypot(dx, dy) > TAP;
 
 /** Only the house whose plan is in focus stands on it. */
 export const standing = (nav: ProjectsNav, index: number) => nav.mode === 'focus' && nav.index === index;
@@ -255,6 +324,8 @@ const RISE = { duration: 2.4, delay: 0.9, ease: 'power1.inOut' };
 const SINK = { duration: 0.8, ease: 'power2.in' };
 /** The other plans fade while one is in focus, and come back with the list. */
 const FADE = { duration: 0.9, ease: 'power1.inOut' };
+/** A turn button turns the model by an eighth of a turn. */
+const TURN_STEP = Math.PI / 4;
 
 export type Projects = ReturnType<typeof createProjects>;
 
@@ -272,6 +343,7 @@ export function createProjects(options: ProjectsOptions) {
   const live = nav.querySelector<HTMLElement>('[data-projects-live]');
   const count = nav.querySelector<HTMLElement>('[data-projects-index]');
   const steps = [...nav.querySelectorAll<HTMLElement>('[data-projects-step]')];
+  const turners = [...nav.querySelectorAll<HTMLElement>('[data-projects-turn]')];
   const items = [...nav.querySelectorAll<HTMLElement>('[data-project]')];
   const total = options.projects.length;
 
@@ -355,6 +427,8 @@ export function createProjects(options: ProjectsOptions) {
 
   let current: ProjectsNav = { mode: 'closed', index: 0 };
   const target: CameraView = { ...state };
+  /** Where the model in focus is seen from: 3/4 until it is turned by hand. */
+  const turn: Angle = { ...FOCUS_VIEW };
   const blended: CameraView = { ...state };
   const narrowScreen = matchMedia('(max-width: 767px)');
   const narrow = () => narrowScreen.matches;
@@ -402,13 +476,31 @@ export function createProjects(options: ProjectsOptions) {
   };
 
   /** Moves the camera to the view for the current step: at once (resize, first frame) or with a glide. */
-  const frame = (immediate: boolean) => {
+  const frame = (immediate: boolean, duration = 1.9) => {
     const { width, height } = size();
-    const view = projectsView(row, current, width / height, narrow(), top);
     gsap.killTweensOf(target);
+    // The whole turns the model was turned by are the same view: wound back, with the turn still to come,
+    // they are never undone on the way to the list or the house.
+    const wound = wrapAngle(target.azimuth);
+    turn.azimuth += wound - target.azimuth;
+    target.azimuth = wound;
+    const view = projectsView(row, current, width / height, narrow(), top, turn);
     if (immediate) Object.assign(target, view);
     else if (reducedMotion) crossfade(() => Object.assign(target, view));
-    else gsap.to(target, { ...view, duration: 1.9, ease: SETTLE, onUpdate: requestRender });
+    else gsap.to(target, { ...view, duration, ease: SETTLE, onUpdate: requestRender });
+    requestRender();
+  };
+
+  /** The model in focus turned by hand: the camera follows the drag, heavily, or at once under reduced motion. */
+  const aim = () => {
+    const { width, height } = size();
+    const view = projectsView(row, current, width / height, narrow(), top, turn);
+    if (reducedMotion) {
+      gsap.killTweensOf(target);
+      Object.assign(target, view);
+    } else {
+      gsap.to(target, { ...view, duration: 0.6, ease: 'power3.out', overwrite: true, onUpdate: requestRender });
+    }
     requestRender();
   };
 
@@ -504,6 +596,11 @@ export function createProjects(options: ProjectsOptions) {
     if (next.mode === 'closed') return close();
     const moved = next.mode !== current.mode || (next.index !== current.index && (next.mode === 'focus' || narrow()));
     const stepped = next.index !== current.index;
+    // A plan comes into focus in 3/4, the short way round from wherever the camera is.
+    if (next.mode === 'focus' && (current.mode !== 'focus' || stepped)) {
+      turn.azimuth = nearestTurn(target.azimuth, FOCUS_VIEW.azimuth);
+      turn.elevation = FOCUS_VIEW.elevation;
+    }
     current = next;
     // Once a plan has been in focus the row is drafted: back in the list its labels return with their sheets.
     if (next.mode === 'focus') panel.dataset.seen = '';
@@ -526,6 +623,13 @@ export function createProjects(options: ProjectsOptions) {
   for (const element of steps) {
     element.addEventListener('click', () => {
       if (element.getAttribute('aria-disabled') !== 'true') step(Number(element.dataset.projectsStep) as 1 | -1);
+    });
+  }
+  for (const element of turners) {
+    element.addEventListener('click', () => {
+      if (current.mode !== 'focus') return;
+      turn.azimuth += Number(element.dataset.projectsTurn) * TURN_STEP;
+      frame(false, 1.2);
     });
   }
   labels.forEach((label, index) => {
@@ -600,25 +704,44 @@ export function createProjects(options: ProjectsOptions) {
     { passive: true },
   );
 
-  // A tap or a click picks a plan; on a touch screen a sideways swipe moves along the row.
+  // A tap or a click picks a plan. In focus a drag turns the model; in the list, on a touch screen, a sideways
+  // swipe moves along the row.
   let downX = 0;
   let downY = 0;
+  /** The pointer turning the model, and where it was last. */
+  let grip = -1;
+  let gripX = 0;
+  let gripY = 0;
   options.canvas.addEventListener('pointerdown', (event) => {
-    downX = event.clientX;
-    downY = event.clientY;
+    downX = gripX = event.clientX;
+    downY = gripY = event.clientY;
+    if (current.mode !== 'focus' || !event.isPrimary) return;
+    grip = event.pointerId;
+    options.canvas.setPointerCapture(event.pointerId);
   });
+  options.canvas.addEventListener('pointermove', (event) => {
+    if (event.pointerId !== grip || current.mode !== 'focus' || !dragging(event.clientX - downX, event.clientY - downY)) return;
+    Object.assign(turn, orbit(turn, event.clientX - gripX, event.clientY - gripY, size().width));
+    gripX = event.clientX;
+    gripY = event.clientY;
+    aim();
+  });
+  const release = (event: PointerEvent) => {
+    if (event.pointerId === grip) grip = -1;
+  };
+  options.canvas.addEventListener('pointercancel', release);
   options.canvas.addEventListener('pointerup', (event) => {
+    release(event);
     if (current.mode === 'closed') return;
-    const dx = event.clientX - downX;
-    const dy = event.clientY - downY;
-    if (Math.hypot(dx, dy) <= 10) {
+    const action = released(current.mode, event.clientX - downX, event.clientY - downY, event.pointerType);
+    if (action?.type === 'pick') {
       const index = sheetAt(event.clientX, event.clientY);
       if (index < 0) return;
       go(navigate(current, { type: 'focus', index }, total));
       // The press left the focus on the page itself: it moves to the plan's label.
       labels[current.index].focus({ preventScroll: true });
-    } else if (event.pointerType !== 'mouse' && Math.abs(dx) > 48 && Math.abs(dx) > 1.4 * Math.abs(dy)) {
-      step(dx < 0 ? 1 : -1);
+    } else if (action?.type === 'step') {
+      step(action.by);
     }
   });
 

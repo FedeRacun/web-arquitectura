@@ -121,10 +121,15 @@ CSS variable names.
   A click or tap brings one plan into focus: the camera turns to 3/4, the
   other plans fade, and the house rises from its plan as a balsa model, raised
   by `deriveModel` in [`params.ts`](src/scripts/experience/building/params.ts)
-  from the same numbers as its sheet, the way the main house is. The arrow
-  keys, the pager and a sideways swipe move along the row, sinking one model
-  and raising the next; Escape or "Volver" steps back to the list and then to
-  the house, where the scroll resumes from the same place.
+  from the same numbers as its sheet, the way the main house is. A drag (mouse
+  or finger) turns the camera all the way round the model in focus and up to
+  almost overhead, and "Girar a la izquierda" / "Girar a la derecha" turn it
+  an eighth of a turn for the keyboard; the framing holds the circle the plan
+  turns in, so the model never leaves the frame or pumps while it turns. The
+  arrow keys and the pager move along the row, and so does a sideways swipe in
+  the list (in focus a swipe turns the model), sinking one model and raising
+  the next in 3/4; Escape or "Volver" steps back to the list and then to the
+  house, where the scroll resumes from the same place.
   [`projects.ts`](src/scripts/experience/projects.ts) blends its camera over
   the timeline's, so the two never fight. The sheets are drawn on the first
   visit and each model on its first focus, not at boot.

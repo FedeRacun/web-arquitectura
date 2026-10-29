@@ -54,6 +54,22 @@ const { projects } = architect;
     </button>
   </div>
 
+  <div class="projects-model">
+    <div class="projects-turn">
+      <button type="button" class="projects-turner" data-projects-turn="1" aria-label="Girar a la izquierda">
+        <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
+          <path d="M4.17 5.13A12 5 0 1 1 4.17 10.87M5.88 13.93L4.17 10.87L7.67 10.92"></path>
+        </svg>
+      </button>
+      <p class="projects-hint">Arrastrá para girar la maqueta</p>
+      <button type="button" class="projects-turner" data-projects-turn="-1" aria-label="Girar a la derecha">
+        <svg viewBox="0 0 28 16" width="28" height="16" aria-hidden="true">
+          <path d="M23.83 5.13A12 5 0 1 0 23.83 10.87M22.12 13.93L23.83 10.87L20.33 10.92"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
   <p class="sr-only" aria-live="polite" data-projects-live></p>
 </nav>
 <div class="projects-veil" data-projects-veil aria-hidden="true"></div>
@@ -104,6 +120,7 @@ const { projects } = architect;
   /* Controls that only mean something over the scene. */
   .projects-back,
   .projects-pager,
+  .projects-model,
   .projects-veil {
     display: none;
   }
@@ -172,7 +189,8 @@ const { projects } = architect;
   }
 
   .projects-arrow,
-  .projects-step svg {
+  .projects-step svg,
+  .projects-turner svg {
     display: block;
     fill: none;
     stroke: currentColor;
@@ -284,6 +302,52 @@ const { projects } = architect;
   }
 
   /*
+   * The model in focus: how to turn it, where the heading was (the heading only reads over the row).
+   * On a narrow screen, over the pager.
+   */
+  :global(.js-experience) .projects-model {
+    position: absolute;
+    top: 6svh;
+    left: clamp(1.25rem, 6vw, 6rem);
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.js-experience) .projects-turn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  :global(.js-experience) .projects-turner {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-bone);
+    cursor: pointer;
+  }
+
+  .projects-turner:is(:hover, :focus-visible) {
+    color: var(--color-accent);
+  }
+
+  .projects-hint {
+    margin: 0;
+    white-space: nowrap;
+    padding-inline: 0.5rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  /*
    * What shows at each step. Closed: nothing. The row: the heading, the way back, the labels once
    * their plans are drafted. A plan in focus: the way back, its label and the pager. What is not
    * shown is hidden too, not just transparent, so neither Tab nor the pointer can reach it: visibility
@@ -295,7 +359,7 @@ const { projects } = architect;
     transition: opacity 0.6s var(--ease-settle);
   }
 
-  :global(.js-experience) :is(.projects-back, .projects-item, .projects-pager) {
+  :global(.js-experience) :is(.projects-back, .projects-item, .projects-pager, .projects-model) {
     opacity: 0;
     visibility: hidden;
     transition:
@@ -303,7 +367,7 @@ const { projects } = architect;
       visibility 0s linear 0.6s;
   }
 
-  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager) {
+  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager, .projects-model) {
     pointer-events: auto;
   }
 
@@ -328,7 +392,7 @@ const { projects } = architect;
       visibility 0s linear 2.6s;
   }
 
-  :global(.js-experience) .projects[data-mode='focus'] .projects-pager {
+  :global(.js-experience) .projects[data-mode='focus'] :is(.projects-pager, .projects-model) {
     opacity: 1;
     visibility: visible;
     transition:
@@ -392,10 +456,18 @@ const { projects } = architect;
       bottom: 4svh;
       translate: -50% 0;
     }
+
+    :global(.js-experience) .projects-model {
+      top: auto;
+      left: 50%;
+      bottom: calc(4svh + 3rem);
+      justify-items: center;
+      translate: -50% 0;
+    }
   }
 
   /* Under reduced motion the veil covers every change: nothing waits behind it. */
-  :global(.js-experience.reduced-motion) .projects[data-mode] :is(.projects-title, .projects-back, .projects-item, .projects-pager) {
+  :global(.js-experience.reduced-motion) .projects[data-mode] :is(.projects-title, .projects-back, .projects-item, .projects-pager, .projects-model) {
     transition-delay: 0s;
   }
 </style>

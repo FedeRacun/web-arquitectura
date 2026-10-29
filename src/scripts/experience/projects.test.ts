@@ -4,7 +4,20 @@ import { Vector3 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { createCameraRig, lens, poseCamera, type CameraView } from './camera';
 import { createGuide } from './guide';
-import { blendView, navigate, present, projectsView, rowLayout, safeArea, standing, type ProjectsNav } from './projects';
+import {
+  blendView,
+  navigate,
+  nearestTurn,
+  orbit,
+  present,
+  projectsView,
+  released,
+  rowLayout,
+  safeArea,
+  standing,
+  wrapAngle,
+  type ProjectsNav,
+} from './projects';
 import { createState } from './state';
 
 const SIZES = [
@@ -135,6 +148,113 @@ describe('projectsView', () => {
     expect(focus.elevation).toBeLessThan(list.elevation);
     expect(focus.azimuth).toBeGreaterThan(0.3);
     expect(focus.azimuth).toBeLessThan(1.2);
+  });
+
+  for (const screen of screens) {
+    it(`holds the sheet and its model inside its margins from any angle it is turned to, on a ${screen.name} screen`, () => {
+      const aspect = screen.width / screen.height;
+      const safe = safeArea('focus', screen.narrow);
+      for (let index = 0; index < row.length; index++) {
+        const sheet = row[index];
+        for (const elevation of [0.2, 0.62, 1.4]) {
+          for (let step = 0; step < 48; step++) {
+            const turn = { azimuth: (step / 48) * 2 * Math.PI - Math.PI, elevation };
+            const view = projectsView(row, { mode: 'focus', index }, aspect, screen.narrow, -0.4, turn);
+            expect(view.azimuth).toBe(turn.azimuth);
+            expect(view.elevation).toBe(elevation);
+            for (const point of [...corners(view, aspect, sheet, -0.4), ...corners(view, aspect, sheet, -0.4 + sheet.height)]) {
+              expect(point.x).toBeGreaterThanOrEqual(-1 + 2 * safe.side - 1e-6);
+              expect(point.x).toBeLessThanOrEqual(1 - 2 * safe.side + 1e-6);
+              expect(point.y).toBeGreaterThanOrEqual(-1 + 2 * safe.bottom - 1e-6);
+              expect(point.y).toBeLessThanOrEqual(1 - 2 * safe.top + 1e-6);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  it('keeps the same distance all the way round, so the model does not pump while it turns', () => {
+    for (const elevation of [0.2, 0.62, 1.4]) {
+      const distances = [0, 0.7, 1.9, 3.1, -2.4].map(
+        (azimuth) => projectsView(row, { mode: 'focus', index: 1 }, 1440 / 900, false, -0.4, { azimuth, elevation }).distance,
+      );
+      for (const distance of distances) expect(distance).toBeCloseTo(distances[0], 9);
+    }
+  });
+});
+
+describe('orbit', () => {
+  const start = { azimuth: 0.45, elevation: 0.62 };
+
+  it('turns the model with the drag, half a turn across the screen, and never stops turning', () => {
+    // Dragging left brings the model's east side round to the front, as a hand turning it would.
+    expect(orbit(start, -1000, 0, 1000).azimuth).toBeCloseTo(0.45 + Math.PI);
+    expect(orbit(start, 1000, 0, 1000).azimuth).toBeCloseTo(0.45 - Math.PI);
+    expect(orbit(start, -4000, 0, 1000).azimuth).toBeCloseTo(0.45 + 4 * Math.PI);
+    expect(orbit(start, -500, 0, 1000).elevation).toBe(0.62);
+  });
+
+  it('looks from higher up as the drag goes down, between just over the table and almost overhead', () => {
+    const higher = orbit(start, 0, 100, 1000);
+    expect(higher.elevation).toBeCloseTo(0.62 + Math.PI / 10);
+    expect(higher.azimuth).toBe(0.45);
+    const top = orbit(start, 0, 100000, 1000).elevation;
+    const low = orbit(start, 0, -100000, 1000).elevation;
+    expect(top).toBeLessThan(Math.PI / 2);
+    expect(top).toBeGreaterThan(1.3);
+    expect(low).toBeGreaterThan(0.1);
+    expect(low).toBeLessThan(0.3);
+  });
+});
+
+describe('released', () => {
+  it('picks a plan on a tap, in the list and in focus alike', () => {
+    for (const mode of ['list', 'focus'] as const) {
+      expect(released(mode, 4, -6, 'mouse')).toEqual({ type: 'pick' });
+      expect(released(mode, 0, 0, 'touch')).toEqual({ type: 'pick' });
+    }
+  });
+
+  it('steps along the row on a sideways swipe in the list, as before', () => {
+    expect(released('list', -120, 10, 'touch')).toEqual({ type: 'step', by: 1 });
+    expect(released('list', 120, -10, 'pen')).toEqual({ type: 'step', by: -1 });
+    // A short, steep or mouse drag is no swipe.
+    expect(released('list', -40, 0, 'touch')).toBeNull();
+    expect(released('list', -120, 100, 'touch')).toBeNull();
+    expect(released('list', -120, 0, 'mouse')).toBeNull();
+  });
+
+  it('only turns the model in focus: the swipe that turned it does not step too', () => {
+    expect(released('focus', -120, 10, 'touch')).toBeNull();
+    expect(released('focus', -120, 10, 'mouse')).toBeNull();
+  });
+});
+
+describe('turns of whole circles', () => {
+  it('wind an angle back between -π and π, to the same view', () => {
+    for (const angle of [0, 0.45, Math.PI, -3, 7, -20, 4 * Math.PI + 0.45]) {
+      const wound = wrapAngle(angle);
+      expect(wound).toBeGreaterThan(-Math.PI - 1e-9);
+      expect(wound).toBeLessThanOrEqual(Math.PI + 1e-9);
+      expect(Math.cos(wound)).toBeCloseTo(Math.cos(angle), 9);
+      expect(Math.sin(wound)).toBeCloseTo(Math.sin(angle), 9);
+    }
+  });
+
+  it('are skipped on the way to an angle, so the camera never turns more than half way round to reach it', () => {
+    for (const [from, to] of [
+      [0, 0.45],
+      [7, 0.45],
+      [-3, 0.45],
+      [3, -3],
+      [-20, 1],
+    ]) {
+      const goal = nearestTurn(from, to);
+      expect(Math.abs(goal - from)).toBeLessThanOrEqual(Math.PI + 1e-9);
+      expect(Math.cos(goal)).toBeCloseTo(Math.cos(to), 9);
+      expect(Math.sin(goal)).toBeCloseTo(Math.sin(to), 9);
+    }
   });
 });
 
