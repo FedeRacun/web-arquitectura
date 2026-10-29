@@ -68,6 +68,16 @@ const { projects } = architect;
           <path d="M23.83 5.13A12 5 0 1 0 23.83 10.87M22.12 13.93L23.83 10.87L20.33 10.92"></path>
         </svg>
       </button>
+      <button type="button" class="projects-zoomer" data-projects-zoom="-1" aria-label="Alejar">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M2.5 8H13.5"></path>
+        </svg>
+      </button>
+      <button type="button" class="projects-zoomer" data-projects-zoom="1" aria-label="Acercar">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M2.5 8H13.5M8 2.5V13.5"></path>
+        </svg>
+      </button>
     </div>
   </div>
 
@@ -191,7 +201,8 @@ const { projects } = architect;
 
   .projects-arrow,
   .projects-step svg,
-  .projects-turner svg {
+  .projects-turner svg,
+  .projects-zoomer svg {
     display: block;
     fill: none;
     stroke: currentColor;
@@ -370,7 +381,7 @@ const { projects } = architect;
       visibility 0s linear 0.6s;
   }
 
-  :global(.js-experience) .projects-turner {
+  :global(.js-experience) :is(.projects-turner, .projects-zoomer) {
     display: grid;
     place-items: center;
     width: 3rem;
@@ -382,8 +393,19 @@ const { projects } = architect;
     cursor: pointer;
   }
 
-  .projects-turner:is(:hover, :focus-visible) {
+  .projects-turner:is(:hover, :focus-visible),
+  .projects-zoomer:not([aria-disabled='true']):is(:hover, :focus-visible) {
     color: var(--color-accent);
+  }
+
+  /* Zooming sits apart from turning; it fades where the model is as close, or as far, as it goes. */
+  .projects-zoomer[data-projects-zoom='-1'] {
+    margin-inline-start: 1rem;
+  }
+
+  .projects-zoomer[aria-disabled='true'] {
+    opacity: 0.3;
+    cursor: default;
   }
 
   .projects-hint {
@@ -418,7 +440,7 @@ const { projects } = architect;
       visibility 0s linear 0.6s;
   }
 
-  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager, .projects-layer, .projects-turner) {
+  :global(.js-experience) .projects[data-mode] :is(.projects-back, .projects-pager, .projects-layer, .projects-turner, .projects-zoomer) {
     pointer-events: auto;
   }
 
@@ -548,6 +570,33 @@ const { projects } = architect;
     .projects-hint {
       grid-area: hint;
       text-align: center;
+    }
+
+    /*
+     * The zoom across from the way back, where the heading's line leaves room, so the controls under the model
+     * take no more height. Without anchors, where the way back sits under a one-line heading.
+     */
+    :global(.js-experience) .projects-zoomer {
+      position: fixed;
+      top: calc(6svh + 2.9375rem);
+      right: 0.5rem;
+    }
+
+    :global(.js-experience) .projects-zoomer[data-projects-zoom='-1'] {
+      right: 3.5rem;
+      margin-inline-start: 0;
+    }
+
+    @supports (anchor-name: --a) {
+      :global(.js-experience) .projects-back {
+        anchor-name: --projects-back;
+      }
+
+      :global(.js-experience) .projects-zoomer {
+        position-anchor: --projects-back;
+        top: anchor(top);
+        height: anchor-size(height);
+      }
     }
   }
 

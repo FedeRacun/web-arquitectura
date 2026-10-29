@@ -100,6 +100,12 @@ const SAFE: Record<'list' | 'focus', Record<'wide' | 'narrow', Safe>> = {
 
 export const safeArea = (mode: 'list' | 'focus', narrow: boolean) => SAFE[mode][narrow ? 'narrow' : 'wide'];
 
+/** A point on a screen `width` by `height` (pixels), held inside the margins: a label whose corner was zoomed off. */
+export const inSafeArea = (x: number, y: number, width: number, height: number, safe: Safe) => ({
+  x: Math.min(Math.max(x, width * safe.side), width * (1 - safe.side)),
+  y: Math.min(Math.max(y, height * safe.top), height * (1 - safe.bottom)),
+});
+
 /** Where the camera looks at a box from, round it and over it (radians). */
 export interface Angle {
   azimuth: number;
@@ -115,6 +121,8 @@ const ELEVATION = { low: 0.2, high: 1.4 };
 const INTO_FLOOR = 0.9;
 /** The sides of the polygon drawn round a turning box's circle. */
 const ROUND = 32;
+/** A model in focus is zoomed by hand up to this many times as close as it is framed. */
+const ZOOM_MAX = 3;
 
 const fitter = lens();
 const corner = new Vector3();
@@ -270,8 +278,9 @@ export const layerTurn = (turn: Angle, layer: LayerId): Angle =>
 /**
  * Where the camera goes for `nav`: the whole row in the list, or one plan per screen where only one fits;
  * in focus, one plan with its model standing on it `height` tall (whole, or cut at a floor), closer, seen
- * from `turn` (3/4 until it is turned by hand) and far enough to stay whole from any side; or, for the
- * plan, the plan alone, read as on the table. `y` is the height the sheets lie at.
+ * from `turn` (3/4 until it is turned by hand) and far enough to stay whole from any side, or `zoom` times
+ * as close, but never inside the sphere round the plan and its model; or, for the plan, the plan alone,
+ * read as on the table. `y` is the height the sheets lie at.
  */
 export function projectsView(
   row: readonly PlacedSheet[],
@@ -281,6 +290,7 @@ export function projectsView(
   y: number,
   turn: Angle = FOCUS_VIEW,
   height?: number,
+  zoom = 1,
 ) {
   const mode = nav.mode === 'focus' ? 'focus' : 'list';
   const framed = mode === 'list' && !narrow ? row : [row[Math.min(Math.max(nav.index, 0), row.length - 1)]];
@@ -288,7 +298,41 @@ export function projectsView(
   const z: [number, number] = [Math.min(...framed.map((s) => s.z - s.depth / 2)), Math.max(...framed.map((s) => s.z + s.depth / 2))];
   if (mode === 'list') return frameBox(x, z, [y, y], aspect, safeArea(mode, narrow), LIST_VIEW);
   if (nav.layer === 'plano') return frameBox(x, z, [y, y], aspect, safeArea(mode, narrow), LIST_VIEW);
-  return frameBox(x, z, [y, y + (height ?? framed[0].height)], aspect, safeArea(mode, narrow), turn, true);
+  const standing = height ?? framed[0].height;
+  const view = frameBox(x, z, [y, y + standing], aspect, safeArea(mode, narrow), turn, true);
+  view.distance = Math.max(view.distance / zoom, Math.hypot(x[1] - x[0], z[1] - z[0], standing) / 2);
+  return view;
+}
+
+/**
+ * How many times as close as it is framed the model in focus can be zoomed: three, or less where the camera
+ * would otherwise come inside the sphere round the plan and its model. One where there is no model to zoom.
+ */
+export function zoomLimit(
+  row: readonly PlacedSheet[],
+  nav: ProjectsNav,
+  aspect: number,
+  narrow: boolean,
+  y: number,
+  turn: Angle = FOCUS_VIEW,
+  height?: number,
+) {
+  if (!turnable(nav)) return 1;
+  const framed = projectsView(row, nav, aspect, narrow, y, turn, height).distance;
+  const closest = projectsView(row, nav, aspect, narrow, y, turn, height, Infinity).distance;
+  return Math.min(Math.max(framed / closest, 1), ZOOM_MAX);
+}
+
+/** A zoom held between the framing and `limit`. */
+export const clampZoom = (zoom: number, limit: number) => Math.min(Math.max(zoom, 1), limit);
+
+/**
+ * How much a wheel turned by `deltaY` zooms: in as it turns away, out by as much as it turns back. Lines and
+ * pages count as pixels; a pinch on a trackpad (a wheel with Ctrl held) comes in small steps, so each counts more.
+ */
+export function wheelZoom(deltaY: number, deltaMode: number, pinch: boolean) {
+  const pixels = deltaY * (deltaMode === 1 ? 16 : deltaMode === 2 ? 800 : 1);
+  return Math.exp(-pixels * (pinch ? 0.01 : 0.002));
 }
 
 /**
@@ -382,6 +426,8 @@ const SINK = { duration: 0.8, ease: 'power2.in' };
 const FADE = { duration: 0.9, ease: 'power1.inOut' };
 /** A turn button turns the model by an eighth of a turn. */
 const TURN_STEP = Math.PI / 4;
+/** A zoom button brings the model in focus this many times as close, or takes it as far back. */
+const ZOOM_STEP = 1.5;
 /** A model is cut open at a floor, or closed again, as the camera settles over it. */
 const CUT = { duration: 1.4, ease: SETTLE };
 
@@ -402,6 +448,7 @@ export function createProjects(options: ProjectsOptions) {
   const count = nav.querySelector<HTMLElement>('[data-projects-index]');
   const steps = [...nav.querySelectorAll<HTMLElement>('[data-projects-step]')];
   const turners = [...nav.querySelectorAll<HTMLElement>('[data-projects-turn]')];
+  const zoomers = [...nav.querySelectorAll<HTMLElement>('[data-projects-zoom]')];
   const layerBar = nav.querySelector<HTMLElement>('[data-projects-layers]');
   const items = [...nav.querySelectorAll<HTMLElement>('[data-project]')];
   const total = options.projects.length;
@@ -492,6 +539,9 @@ export function createProjects(options: ProjectsOptions) {
   const target: CameraView = { ...state };
   /** Where the model in focus is seen from: 3/4 until it is turned by hand. */
   const turn: Angle = { ...FOCUS_VIEW };
+  /** How many times as close as it is framed the model in focus is seen, and whether it was zoomed by hand. */
+  let zoom = 1;
+  let zoomed = false;
   const blended: CameraView = { ...state };
   const narrowScreen = matchMedia('(max-width: 767px)');
   const narrow = () => narrowScreen.matches;
@@ -520,6 +570,20 @@ export function createProjects(options: ProjectsOptions) {
 
   /** How tall the model in focus stands for the layer it shows. */
   const shown = () => cutHeight(options.projects[current.index].plan, current.layer, houses[current.index].height);
+
+  /**
+   * The zoom held within what the view allows from where the model is seen now (from just over the table the
+   * camera would sooner come inside it), and the buttons that would zoom no further marked so.
+   */
+  const hold = () => {
+    const { width, height } = size();
+    const limit = zoomLimit(row, current, width / height, narrow(), top, turn, shown());
+    zoom = clampZoom(zoom, limit);
+    for (const element of zoomers) {
+      const done = Number(element.dataset.projectsZoom) > 0 ? zoom >= limit - 1e-6 : zoom <= 1 + 1e-6;
+      element.setAttribute('aria-disabled', String(done));
+    }
+  };
 
   /** The layers of the plan in focus, made when it comes into focus, the one it shows pressed. */
   let layersOfIndex = -1;
@@ -585,18 +649,23 @@ export function createProjects(options: ProjectsOptions) {
     const wound = wrapAngle(target.azimuth);
     turn.azimuth += wound - target.azimuth;
     target.azimuth = wound;
-    const view = projectsView(row, current, width / height, narrow(), top, turn, shown());
+    hold();
+    const view = projectsView(row, current, width / height, narrow(), top, turn, shown(), zoom);
     if (immediate) Object.assign(target, view);
-    // At the veil's cut, the view as it is then: a drag made under the veil is not undone by it.
-    else if (reducedMotion) crossfade(() => Object.assign(target, projectsView(row, current, width / height, narrow(), top, turn, shown())));
+    // At the veil's cut, the view as it is then: a drag or a zoom made under the veil is not undone by it.
+    else if (reducedMotion) crossfade(() => Object.assign(target, projectsView(row, current, width / height, narrow(), top, turn, shown(), zoom)));
     else gsap.to(target, { ...view, duration, ease: SETTLE, onUpdate: requestRender });
     requestRender();
   };
 
-  /** The model in focus turned by hand: the camera follows the drag, heavily, or at once under reduced motion. */
+  /**
+   * The model in focus turned or zoomed by hand: the camera follows the hand, heavily, or at once under
+   * reduced motion.
+   */
   const aim = () => {
     const { width, height } = size();
-    const view = projectsView(row, current, width / height, narrow(), top, turn, shown());
+    hold();
+    const view = projectsView(row, current, width / height, narrow(), top, turn, shown(), zoom);
     if (reducedMotion) {
       gsap.killTweensOf(target);
       Object.assign(target, view);
@@ -714,6 +783,11 @@ export function createProjects(options: ProjectsOptions) {
       turn.elevation = FOCUS_VIEW.elevation;
     }
     if (layered) Object.assign(turn, layerTurn(turn, next.layer));
+    // Another house, another layer or the list: seen whole again.
+    if (stepped || layered || next.mode !== current.mode) {
+      zoom = 1;
+      zoomed = false;
+    }
     const news = announced(current, next);
     current = next;
     // Once a plan has been in focus the row is drafted: back in the list its labels return with their sheets.
@@ -749,6 +823,17 @@ export function createProjects(options: ProjectsOptions) {
       if (!turnable(current)) return;
       turn.azimuth += Number(element.dataset.projectsTurn) * TURN_STEP;
       frame(false, 1.2);
+    });
+  }
+  /** The model in focus, `by` times as close. */
+  const zoomBy = (by: number) => {
+    zoom *= by;
+    zoomed = true;
+    aim();
+  };
+  for (const element of zoomers) {
+    element.addEventListener('click', () => {
+      if (turnable(current) && element.getAttribute('aria-disabled') !== 'true') zoomBy(ZOOM_STEP ** Number(element.dataset.projectsZoom));
     });
   }
   labels.forEach((label, index) => {
@@ -824,16 +909,52 @@ export function createProjects(options: ProjectsOptions) {
     { passive: true },
   );
 
-  // A tap or a click picks a plan. In focus a drag turns the model; in the list, on a touch screen, a sideways
-  // swipe moves along the row.
+  // A wheel over the model in focus zooms it (a pinch on a trackpad too, which the browser would zoom the page by).
+  options.canvas.addEventListener(
+    'wheel',
+    (event) => {
+      if (!turnable(current)) return;
+      event.preventDefault();
+      zoomBy(wheelZoom(event.deltaY, event.deltaMode, event.ctrlKey));
+    },
+    { passive: false },
+  );
+
+  // A tap or a click picks a plan. In focus a drag turns the model and a pinch zooms it; in the list, on a touch
+  // screen, a sideways swipe moves along the row.
   let downX = 0;
   let downY = 0;
   /** The pointer turning the model, and where it was last. */
   let grip = -1;
   let gripX = 0;
   let gripY = 0;
-  // Only the first finger counts: a second one, as in a pinch, neither moves where the press began nor picks.
+  /** The fingers on the model in focus; once two are down, how far apart they began and the zoom then. */
+  const fingers = new Map<number, { x: number; y: number }>();
+  let spread = 0;
+  let spreadZoom = 1;
+  /** A press that became a pinch neither turns nor picks, until every finger is lifted. */
+  let pinched = false;
+  const apart = () => {
+    const [a, b] = fingers.values();
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  // Only the first finger moves where the press began, turns and picks; a second one makes the press a pinch.
   options.canvas.addEventListener('pointerdown', (event) => {
+    if (event.isPrimary) {
+      fingers.clear();
+      spread = 0;
+      pinched = false;
+    }
+    if (event.pointerType === 'touch' && turnable(current)) {
+      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      options.canvas.setPointerCapture(event.pointerId);
+      if (fingers.size === 2) {
+        grip = -1;
+        pinched = true;
+        spread = apart();
+        spreadZoom = zoom;
+      }
+    }
     if (!event.isPrimary) return;
     downX = gripX = event.clientX;
     downY = gripY = event.clientY;
@@ -842,6 +963,16 @@ export function createProjects(options: ProjectsOptions) {
     options.canvas.setPointerCapture(event.pointerId);
   });
   options.canvas.addEventListener('pointermove', (event) => {
+    const finger = fingers.get(event.pointerId);
+    if (finger) {
+      finger.x = event.clientX;
+      finger.y = event.clientY;
+      if (spread > 0 && fingers.size > 1 && turnable(current)) {
+        zoom = spreadZoom;
+        zoomBy(apart() / spread);
+        return;
+      }
+    }
     if (event.pointerId !== grip || !turnable(current) || !dragging(event.clientX - downX, event.clientY - downY)) return;
     Object.assign(turn, orbit(turn, event.clientX - gripX, event.clientY - gripY, size().width));
     gripX = event.clientX;
@@ -850,11 +981,13 @@ export function createProjects(options: ProjectsOptions) {
   });
   const release = (event: PointerEvent) => {
     if (event.pointerId === grip) grip = -1;
+    fingers.delete(event.pointerId);
+    if (fingers.size < 2) spread = 0;
   };
   options.canvas.addEventListener('pointercancel', release);
   options.canvas.addEventListener('pointerup', (event) => {
     release(event);
-    if (!event.isPrimary || current.mode === 'closed') return;
+    if (!event.isPrimary || pinched || current.mode === 'closed') return;
     const action = released(current.mode, event.clientX - downX, event.clientY - downY, event.pointerType);
     if (action?.type === 'pick') {
       const index = sheetAt(event.clientX, event.clientY);
@@ -904,8 +1037,12 @@ export function createProjects(options: ProjectsOptions) {
           bottom = Math.min(bottom, label.y);
         }
         // The last corner is the near left one.
-        items[index].style.setProperty('--x', `${(((label.x + 1) / 2) * width).toFixed(1)}px`);
-        items[index].style.setProperty('--y', `${(((1 - bottom) / 2) * height).toFixed(1)}px`);
+        let x = ((label.x + 1) / 2) * width;
+        let y = ((1 - bottom) / 2) * height;
+        // Zoomed by hand, the plan's corners may leave the screen: its label stays inside the margins.
+        if (zoomed && index === current.index) ({ x, y } = inSafeArea(x, y, width, height, safeArea('focus', narrow())));
+        items[index].style.setProperty('--x', `${x.toFixed(1)}px`);
+        items[index].style.setProperty('--y', `${y.toFixed(1)}px`);
       });
     },
     resize() {

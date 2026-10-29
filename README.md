@@ -125,7 +125,11 @@ CSS variable names.
   or finger) turns the camera all the way round the model in focus and up to
   almost overhead, and "Girar a la izquierda" / "Girar a la derecha" turn it
   an eighth of a turn for the keyboard; the framing holds the circle the plan
-  turns in, so the model never leaves the frame or pumps while it turns. Over
+  turns in, so the model never leaves the frame or pumps while it turns. The
+  wheel, a pinch (two fingers, or a trackpad) and "Acercar" / "Alejar" zoom it
+  up to three times as close, never inside the sphere round its plan; another
+  house, another layer or the list frames it whole again. On a narrow screen
+  the two zoom buttons sit across from "Volver a la lista". Over
   it, its layers read from the line to the volume: "Plano" lays the model down
   and looks down on the sheet; each floor ("Planta", "Planta baja", "Planta
   alta", as its level is named) cuts the model 1.20 m over that floor with the

@@ -9,8 +9,10 @@ import { createGuide } from './guide';
 import {
   announced,
   blendView,
+  clampZoom,
   cutHeight,
   FOCUS_VIEW,
+  inSafeArea,
   layersOf,
   layerTurn,
   navigate,
@@ -23,7 +25,9 @@ import {
   safeArea,
   standing,
   turnable,
+  wheelZoom,
   wrapAngle,
+  zoomLimit,
   type ProjectsNav,
 } from './projects';
 import { createState } from './state';
@@ -308,6 +312,108 @@ describe('the view of a layer', () => {
       inside(cut, 1.6);
     });
   }
+});
+
+describe('zooming the model in focus', () => {
+  const row = rowLayout(SIZES, 50, 8);
+  const focus = (index: number, layer: ProjectsNav['layer'] = 'completa'): ProjectsNav => ({ mode: 'focus', index, layer });
+  const screens = [
+    { aspect: 1440 / 900, narrow: false },
+    { aspect: 375 / 812, narrow: true },
+  ];
+  /** The radius of the sphere round a sheet and its model `height` tall. */
+  const reach = (index: number, height: number) => Math.hypot(row[index].width, row[index].depth, height) / 2;
+  const turned = { azimuth: 2.1, elevation: 0.95 };
+
+  it('comes closer by the zoom, to the same point of the model, from the same side', () => {
+    const whole = projectsView(row, focus(1), 1440 / 900, false, -0.4, turned);
+    const zoomed = projectsView(row, focus(1), 1440 / 900, false, -0.4, turned, undefined, 2);
+    expect(zoomed.distance).toBeCloseTo(whole.distance / 2, 9);
+    expect({ ...zoomed, distance: 0 }).toEqual({ ...whole, distance: 0 });
+  });
+
+  it('never comes inside the sphere round the plan and its model, however far it is zoomed', () => {
+    for (const { aspect, narrow } of screens) {
+      for (let index = 0; index < row.length; index++) {
+        for (const [layer, height] of [['completa', row[index].height], ['ground', 1.6]] as const) {
+          for (const elevation of [0.2, 0.62, 1.4]) {
+            const turn = { azimuth: 0.7, elevation };
+            const view = projectsView(row, focus(index, layer), aspect, narrow, -0.4, turn, height, 100);
+            expect(view.distance).toBeGreaterThanOrEqual(reach(index, height) - 1e-9);
+          }
+        }
+      }
+    }
+  });
+
+  it('goes up to three times as close, less where the sphere comes first, and never back past the framing', () => {
+    for (const { aspect, narrow } of screens) {
+      for (let index = 0; index < row.length; index++) {
+        for (const elevation of [0.2, 0.62, 1.4]) {
+          const turn = { azimuth: 0.7, elevation };
+          const height = row[index].height;
+          const limit = zoomLimit(row, focus(index), aspect, narrow, -0.4, turn, height);
+          expect(limit).toBeGreaterThanOrEqual(1);
+          expect(limit).toBeLessThanOrEqual(3);
+          const whole = projectsView(row, focus(index), aspect, narrow, -0.4, turn, height);
+          const closest = projectsView(row, focus(index), aspect, narrow, -0.4, turn, height, limit);
+          expect(closest.distance).toBeCloseTo(whole.distance / limit, 6);
+          if (limit < 3) expect(closest.distance).toBeCloseTo(reach(index, height), 6);
+        }
+      }
+    }
+    // From just over the table on a landscape screen the sphere comes first; on a portrait one, never.
+    expect(zoomLimit(row, focus(1), 1440 / 900, false, -0.4, { azimuth: 0.45, elevation: 0.2 })).toBeLessThan(3);
+    expect(zoomLimit(row, focus(1), 375 / 812, true, -0.4, { azimuth: 0.45, elevation: 0.2 })).toBe(3);
+  });
+
+  it('holds a zoom between the framing and the limit', () => {
+    expect(clampZoom(0.4, 2.8)).toBe(1);
+    expect(clampZoom(2, 2.8)).toBe(2);
+    expect(clampZoom(5, 2.8)).toBe(2.8);
+  });
+
+  it('leaves the list and the plan framed as they are', () => {
+    for (const nav of [{ mode: 'list', index: 1, layer: 'completa' } as const, focus(1, 'plano')]) {
+      expect(projectsView(row, nav, 1440 / 900, false, -0.4, turned, undefined, 3)).toEqual(
+        projectsView(row, nav, 1440 / 900, false, -0.4, turned),
+      );
+      expect(zoomLimit(row, nav, 1440 / 900, false, -0.4, turned)).toBe(1);
+    }
+  });
+});
+
+describe('wheelZoom', () => {
+  it('zooms in as the wheel turns away, and out by as much as it turns back', () => {
+    const into = wheelZoom(-100, 0, false);
+    expect(into).toBeGreaterThan(1.1);
+    expect(into).toBeLessThan(1.4);
+    expect(wheelZoom(100, 0, false)).toBeCloseTo(1 / into, 9);
+    expect(wheelZoom(0, 0, false)).toBe(1);
+  });
+
+  it('reads a wheel counted in lines or pages as one counted in pixels', () => {
+    expect(wheelZoom(-3, 1, false)).toBeCloseTo(wheelZoom(-48, 0, false), 9);
+    expect(wheelZoom(-1, 2, false)).toBeCloseTo(wheelZoom(-800, 0, false), 9);
+  });
+
+  it('follows a pinch on a trackpad, whose steps are small, more closely than a wheel', () => {
+    expect(wheelZoom(-10, 0, true)).toBeGreaterThan(wheelZoom(-10, 0, false) + 0.05);
+    expect(wheelZoom(10, 0, true)).toBeCloseTo(1 / wheelZoom(-10, 0, true), 9);
+  });
+});
+
+describe('inSafeArea', () => {
+  const safe = safeArea('focus', false);
+
+  it('leaves a label where it hangs inside the margins', () => {
+    expect(inSafeArea(500, 400, 1440, 900, safe)).toEqual({ x: 500, y: 400 });
+  });
+
+  it('holds a label hung from a corner zoomed off the screen at the edge of the margins', () => {
+    expect(inSafeArea(-200, 1300, 1440, 900, safe)).toEqual({ x: 1440 * safe.side, y: 900 * (1 - safe.bottom) });
+    expect(inSafeArea(2000, -50, 1440, 900, safe)).toEqual({ x: 1440 * (1 - safe.side), y: 900 * safe.top });
+  });
 });
 
 describe('announced', () => {
